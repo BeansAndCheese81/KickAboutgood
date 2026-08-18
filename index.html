@@ -220,6 +220,37 @@
     padding:7px 14px;cursor:pointer;transition:background .15s ease;
   }
   .mp-browse-join-btn:hover{background:#ff6f63;}
+
+  .opt-grid{
+    display:grid;grid-template-columns:repeat(auto-fill, minmax(120px, 1fr));
+    gap:12px;width:100%;max-width:640px;max-height:48vh;overflow-y:auto;padding:4px 2px;
+  }
+  .opt-card{
+    background:var(--panel-2);border:2px solid #223a2c;border-radius:12px;
+    padding:14px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;
+    transition:border-color .15s ease, transform .1s ease;color:var(--ink);font-family:inherit;
+  }
+  .opt-card:hover{border-color:var(--player);transform:translateY(-2px);}
+  .opt-card:active{transform:translateY(0) scale(.97);}
+  .opt-card.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);}
+  .opt-card-emoji{font-size:26px;}
+  .opt-card-label{font-size:11.5px;font-weight:700;text-align:center;line-height:1.25;}
+
+  .swatch-grid{
+    display:grid;grid-template-columns:repeat(auto-fill, minmax(76px, 1fr));
+    gap:12px;width:100%;max-width:520px;padding:4px 2px;
+  }
+  .swatch-card{
+    display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;
+    background:none;border:none;color:var(--ink);font-family:inherit;padding:4px;
+  }
+  .swatch-circle{
+    width:46px;height:46px;border-radius:50%;border:3px solid transparent;
+    box-shadow:0 6px 14px rgba(0,0,0,.4);transition:border-color .15s ease, transform .1s ease;
+  }
+  .swatch-card:hover .swatch-circle{transform:scale(1.08);}
+  .swatch-card.active .swatch-circle{border-color:var(--accent);}
+  .swatch-label{font-size:10.5px;font-weight:600;color:var(--dim);}
   .mp-dot{
     display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--dim);
     margin-right:6px;vertical-align:middle;
@@ -300,10 +331,10 @@
           <button class="pill-btn" id="howToBtn">How to Play</button>
           <button class="pill-btn" id="celebrationBtn">🎉 Celebration: Classic</button>
         </div>
-        <div class="home-avatar-wrap">
-          <div class="home-avatar"></div>
-          <div class="home-avatar-label">You</div>
-        </div>
+        <button class="home-avatar-wrap" id="avatarBtn" style="background:none;border:none;cursor:pointer;padding:0;">
+          <div class="home-avatar" id="homeAvatar"></div>
+          <div class="home-avatar-label">Customize</div>
+        </button>
       </div>
     </div>
 
@@ -355,6 +386,24 @@
 
       <div class="overlay-buttons">
         <button class="btn btn-primary" id="settingsCloseBtn">Done</button>
+      </div>
+    </div>
+
+    <div class="overlay overlay-top" id="celebrationOverlay">
+      <div class="overlay-title" style="font-size:30px;">Goal Celebrations</div>
+      <div class="overlay-sub">Pick what plays every time you score. Selecting one previews it and saves your choice.</div>
+      <div class="opt-grid" id="celebrationGrid"></div>
+      <div class="overlay-buttons">
+        <button class="btn btn-secondary" id="celebrationCloseBtn">Close</button>
+      </div>
+    </div>
+
+    <div class="overlay overlay-top" id="colorOverlay">
+      <div class="overlay-title" style="font-size:30px;">Customize Character</div>
+      <div class="overlay-sub">Pick your kit color.</div>
+      <div class="swatch-grid" id="colorGrid"></div>
+      <div class="overlay-buttons">
+        <button class="btn btn-secondary" id="colorCloseBtn">Close</button>
       </div>
     </div>
 
@@ -438,7 +487,6 @@
 </div>
 
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-<script src="https://unpkg.com/kvdb.io@v1.0"></script>
 <script>
 const canvas = document.getElementById('pitch');
 const ctx = canvas.getContext('2d');
@@ -454,6 +502,14 @@ const howToOverlay = document.getElementById('howToOverlay');
 const practiceBtn = document.getElementById('practiceBtn');
 const howToBtn = document.getElementById('howToBtn');
 const celebrationBtn = document.getElementById('celebrationBtn');
+const celebrationOverlay = document.getElementById('celebrationOverlay');
+const celebrationGrid = document.getElementById('celebrationGrid');
+const celebrationCloseBtn = document.getElementById('celebrationCloseBtn');
+const avatarBtn = document.getElementById('avatarBtn');
+const homeAvatar = document.getElementById('homeAvatar');
+const colorOverlay = document.getElementById('colorOverlay');
+const colorGrid = document.getElementById('colorGrid');
+const colorCloseBtn = document.getElementById('colorCloseBtn');
 const howToCloseBtn = document.getElementById('howToCloseBtn');
 const menuBestEl = document.getElementById('menuBest');
 const playBtn = document.getElementById('playBtn');
@@ -523,7 +579,11 @@ const _rootStyle = getComputedStyle(document.documentElement);
 const COLOR_TURF_A = _rootStyle.getPropertyValue('--turf-a').trim() || '#5cc47e';
 const COLOR_TURF_B = _rootStyle.getPropertyValue('--turf-b').trim() || '#4bb56d';
 const COLOR_LINE = _rootStyle.getPropertyValue('--line').trim() || 'rgba(255,255,255,.92)';
-const COLOR_PLAYER = _rootStyle.getPropertyValue('--player').trim() || '#ff5a4e';
+let COLOR_PLAYER = _rootStyle.getPropertyValue('--player').trim() || '#ff5a4e';
+try {
+  const savedColor = localStorage.getItem('kickabout_player_color');
+  if (savedColor) COLOR_PLAYER = savedColor;
+} catch(e) { /* localStorage unavailable — fall back to default */ }
 const COLOR_OPP = _rootStyle.getPropertyValue('--opp').trim() || '#2d9cdb';
 const COLOR_BALL = _rootStyle.getPropertyValue('--ball').trim() || '#fffdf6';
 const COLOR_ACCENT = _rootStyle.getPropertyValue('--accent').trim() || '#ffb238';
@@ -645,24 +705,22 @@ const PEER_CONFIG = {
 // One-time setup: on first ever load with the placeholder below, the game auto-creates
 // a free anonymous bucket and prints its ID to the console. Copy that ID in here and
 // redeploy — after that this bootstrap path is skipped entirely.
-const LOBBY_BUCKET_ID = 'ErYFh2NVG7mqEorEhLJzNc';
+// Talks to kvdb.io's plain HTTP API directly (no client library) — see https://kvdb.io/docs/api/
+const LOBBY_BUCKET_ID = 'PASTE_YOUR_BUCKET_ID_HERE';
 const LOBBY_TTL_SECONDS = 40;      // a listed game disappears this long after its last heartbeat
 const LOBBY_HEARTBEAT_MS = 15000;  // how often a hosted game refreshes its listing
 const LOBBY_POLL_MS = 4000;        // how often the browser panel refreshes the list
 const LOBBY_STALE_MS = LOBBY_TTL_SECONDS * 1000;
 
-let lobbyBucket = null;
 let lobbySetupPending = false;
 let lobbyHeartbeatTimer = null;
 let lobbyPollTimer = null;
 let lastHostedId = null;
 
-function getLobbyBucket(){
-  if (lobbyBucket) return lobbyBucket;
-  if (typeof KVdb === 'undefined') return null;
-  if (!LOBBY_BUCKET_ID || LOBBY_BUCKET_ID === 'PASTE_YOUR_BUCKET_ID_HERE') return null;
-  lobbyBucket = KVdb.bucket(LOBBY_BUCKET_ID);
-  return lobbyBucket;
+function getLobbyBucketId(){
+  const id = (LOBBY_BUCKET_ID || '').trim();
+  if (!id || id === 'PASTE_YOUR_BUCKET_ID_HERE') return null;
+  return id;
 }
 
 async function bootstrapLobbyBucketIfNeeded(){
@@ -672,7 +730,7 @@ async function bootstrapLobbyBucketIfNeeded(){
     const res = await fetch('https://kvdb.io/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'email=lobby@kickabout.local&default_ttl=' + LOBBY_TTL_SECONDS
+      body: 'email=YOUR_EMAIL_HERE@example.com&default_ttl=' + LOBBY_TTL_SECONDS
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const id = (await res.text()).trim();
@@ -687,9 +745,11 @@ async function bootstrapLobbyBucketIfNeeded(){
 bootstrapLobbyBucketIfNeeded();
 
 function registerLobbyEntry(id){
-  const bucket = getLobbyBucket();
-  if (!bucket) return;
-  bucket.set('lobby:' + id, JSON.stringify({ code: id, ts: Date.now() }))
+  const bucketId = getLobbyBucketId();
+  if (!bucketId) return;
+  const value = JSON.stringify({ code: id, ts: Date.now() });
+  fetch(`https://kvdb.io/${bucketId}/lobby:${id}`, { method: 'POST', body: value })
+    .then(res => { if (!res.ok) console.error('Lobby registration failed — HTTP', res.status); })
     .catch(e => console.error('Lobby registration failed', e));
 }
 
@@ -700,14 +760,16 @@ function refreshLobbyHeartbeat(id){
 
 function deregisterLobbyEntry(){
   if (lobbyHeartbeatTimer) { clearInterval(lobbyHeartbeatTimer); lobbyHeartbeatTimer = null; }
-  const bucket = getLobbyBucket();
-  if (bucket && lastHostedId) bucket.delete('lobby:' + lastHostedId).catch(() => {});
+  const bucketId = getLobbyBucketId();
+  if (bucketId && lastHostedId) {
+    fetch(`https://kvdb.io/${bucketId}/lobby:${lastHostedId}`, { method: 'DELETE' }).catch(() => {});
+  }
   lastHostedId = null;
 }
 
 async function refreshLobbyList(){
-  const bucket = getLobbyBucket();
-  if (!bucket) {
+  const bucketId = getLobbyBucketId();
+  if (!bucketId) {
     mpBrowseList.innerHTML = '';
     mpBrowseEmpty.textContent = lobbySetupPending
       ? 'Server list needs one-time setup — check the browser console for instructions.'
@@ -716,12 +778,24 @@ async function refreshLobbyList(){
     return;
   }
   try {
-    const entries = await bucket.list({ prefix: 'lobby:', values: true });
+    const listRes = await fetch(`https://kvdb.io/${bucketId}/?prefix=lobby:`);
+    if (!listRes.ok) throw new Error('list HTTP ' + listRes.status);
+    const listText = await listRes.text();
+    const keys = listText.split('\n').map(k => k.trim()).filter(Boolean);
     const now = Date.now();
-    const games = entries
-      .map(([, raw]) => { try { return JSON.parse(raw); } catch (e) { return null; } })
-      .filter(g => g && g.code && (now - g.ts) < LOBBY_STALE_MS)
-      .sort((a, b) => b.ts - a.ts);
+
+    const games = (await Promise.all(keys.map(async key => {
+      try {
+        const valRes = await fetch(`https://kvdb.io/${bucketId}/${key}`);
+        if (!valRes.ok) return null;
+        const raw = await valRes.text();
+        const g = JSON.parse(raw);
+        return (g && g.code && (now - g.ts) < LOBBY_STALE_MS) ? g : null;
+      } catch (e) {
+        return null; // skip a malformed/expired entry rather than failing the whole list
+      }
+    }))).filter(Boolean).sort((a, b) => b.ts - a.ts);
+
     renderLobbyList(games);
   } catch (e) {
     console.error('Lobby list fetch failed', e);
@@ -1404,7 +1478,7 @@ function ensureAudio(){
     audioCtx = new AC();
     masterGain = audioCtx.createGain();
     masterGain.gain.value = muted ? 0 : volume;
-    masterGain.connect(masterGain);
+    masterGain.connect(audioCtx.destination);
   }
   if (audioCtx.state === 'suspended') audioCtx.resume();
 }
@@ -1556,113 +1630,170 @@ function playReplayImpact(){
   osc.stop(t + 0.42);
 }
 
-let celebrationEffect = 'classic'; // 'classic' | 'confetti' | 'bomb' | 'fireworks'
-const CELEBRATION_OPTIONS = [
-  { id: 'classic', label: '⚽ Classic' },
-  { id: 'confetti', label: '🎉 Confetti' },
-  { id: 'bomb', label: '💣 Bomb' },
-  { id: 'fireworks', label: '🎆 Fireworks' }
+let celebrationEffect = 'classic';
+try {
+  const saved = localStorage.getItem('kickabout_celebration');
+  if (saved) celebrationEffect = saved;
+} catch(e) { /* localStorage unavailable — fall back to session default */ }
+
+const RAINBOW_COLORS = ['255,90,78', '255,159,67', '255,207,92', '155,227,138', '93,180,255', '154,120,255', '255,120,190'];
+
+// Generic particle burst — every celebration below is built from this
+function spawnBurst(x, y, o){
+  for (let i = 0; i < o.count; i++) {
+    let ang;
+    if (o.spiral) ang = (i / o.count) * Math.PI * 2 * (o.spiralTurns || 1) + Math.random() * 0.3;
+    else if (o.directional) ang = o.angleBase + (Math.random() - 0.5) * (o.spreadRad !== undefined ? o.spreadRad : 1.4);
+    else ang = Math.random() * Math.PI * 2;
+    const spd = (o.speedMin + Math.random() * (o.speedMax - o.speedMin)) * SCALE;
+    particles.push({
+      x, y,
+      vx: Math.cos(ang) * spd,
+      vy: Math.sin(ang) * spd + (o.vyBias || 0) * SCALE,
+      life: 1,
+      decay: o.decayMin + Math.random() * (o.decayMax - o.decayMin),
+      gravity: !!o.gravity,
+      drag: o.drag,
+      shape: o.shape || 'circle',
+      size: (o.sizeMin + Math.random() * (o.sizeMax - o.sizeMin)) * SCALE,
+      spin: o.spin ? Math.random() * Math.PI * 2 : undefined,
+      spinSpeed: o.spin ? (Math.random() - 0.5) * (o.spinSpeedMag || 0.3) : undefined,
+      color: Array.isArray(o.colors) ? o.colors[Math.floor(Math.random() * o.colors.length)] : o.colors
+    });
+  }
+}
+
+function runBomb(x, y){
+  spawnBurst(x, y, { count: 45, colors: ['255,207,92', '255,90,78'], speedMin: 1.5, speedMax: 6.5, decayMin: 0.02, decayMax: 0.04, drag: 0.88, sizeMin: 2.5, sizeMax: 6.5 });
+  spawnBurst(x, y, { count: 16, colors: '40,38,34', speedMin: 0.5, speedMax: 2, decayMin: 0.01, decayMax: 0.01, drag: 0.94, sizeMin: 4, sizeMax: 8 });
+  triggerShake(20 * SCALE);
+}
+
+function runFireworks(x, y){
+  for (let b = 0; b < 3; b++) {
+    const bx = x + (Math.random() - 0.5) * 220 * SCALE;
+    const by = y - 60 * SCALE - Math.random() * 90 * SCALE;
+    spawnBurst(bx, by, { count: 34, colors: RAINBOW_COLORS[Math.floor(Math.random() * RAINBOW_COLORS.length)], speedMin: 2, speedMax: 4.2, decayMin: 0.018, decayMax: 0.018, gravity: true, drag: 0.97, sizeMin: 1.8, sizeMax: 3.4 });
+  }
+}
+
+function runSnow(x, y){
+  for (let i = 0; i < 40; i++) {
+    particles.push({
+      x: Math.random() * W, y: -10 * SCALE,
+      vx: (Math.random() - 0.5) * 0.4 * SCALE,
+      vy: (0.6 + Math.random() * 0.6) * SCALE,
+      life: 1, decay: 0.006 + Math.random() * 0.004,
+      drag: 0.995, size: (1.5 + Math.random() * 2) * SCALE,
+      color: '255,255,255'
+    });
+  }
+}
+
+function runDisco(x, y){
+  for (let b = 0; b < 5; b++) {
+    const bx = x + (Math.random() - 0.5) * 160 * SCALE;
+    const by = y + (Math.random() - 0.5) * 100 * SCALE;
+    spawnBurst(bx, by, { count: 16, colors: RAINBOW_COLORS, speedMin: 1.5, speedMax: 3.5, decayMin: 0.03, decayMax: 0.05, drag: 0.9, sizeMin: 1.5, sizeMax: 3, shape: 'rect', spin: true, spinSpeedMag: 0.6 });
+  }
+}
+
+const CELEBRATION_LIBRARY = [
+  { id: 'classic', label: 'Classic', emoji: '⚽', run: (x, y) => spawnParticles(x, y, 55, -Math.PI / 2, 2.2, 0.009) },
+  { id: 'confetti', label: 'Confetti', emoji: '🎉', run: (x, y) => spawnBurst(x, y, { count: 60, colors: RAINBOW_COLORS, directional: true, angleBase: -Math.PI / 2, spreadRad: 2.8, speedMin: 2.5, speedMax: 6.5, vyBias: -2, decayMin: 0.01, decayMax: 0.02, gravity: true, sizeMin: 2, sizeMax: 4.5, shape: 'rect', spin: true }) },
+  { id: 'bomb', label: 'Bomb', emoji: '💣', run: runBomb },
+  { id: 'fireworks', label: 'Fireworks', emoji: '🎆', run: runFireworks },
+  { id: 'sparkler', label: 'Sparkler', emoji: '✨', run: (x, y) => spawnBurst(x, y, { count: 50, colors: ['255,207,92', '255,235,180'], speedMin: 1, speedMax: 5, decayMin: 0.035, decayMax: 0.06, drag: 0.9, sizeMin: 1, sizeMax: 2.2, shape: 'rect', spin: true, spinSpeedMag: 0.8 }) },
+  { id: 'rainbow', label: 'Rainbow', emoji: '🌈', run: (x, y) => spawnBurst(x, y, { count: 70, colors: RAINBOW_COLORS, spiral: true, spiralTurns: 3, speedMin: 2, speedMax: 4.5, decayMin: 0.015, decayMax: 0.025, drag: 0.94, sizeMin: 2, sizeMax: 3.5 }) },
+  { id: 'snow', label: 'Snow', emoji: '❄️', run: runSnow },
+  { id: 'lightning', label: 'Lightning', emoji: '⚡', run: (x, y) => { spawnBurst(x, y, { count: 40, colors: ['255,255,255', '160,220,255'], speedMin: 3, speedMax: 8, decayMin: 0.04, decayMax: 0.07, drag: 0.85, sizeMin: 1, sizeMax: 2.5 }); triggerShake(16 * SCALE); } },
+  { id: 'hearts', label: 'Hearts', emoji: '💖', run: (x, y) => spawnBurst(x, y, { count: 30, colors: ['255,120,150', '255,90,78', '255,180,200'], speedMin: 0.8, speedMax: 2.5, vyBias: -1.5, decayMin: 0.01, decayMax: 0.016, drag: 0.96, sizeMin: 2.5, sizeMax: 4.5 }) },
+  { id: 'stars', label: 'Stars', emoji: '🌟', run: (x, y) => spawnBurst(x, y, { count: 40, colors: ['255,207,92', '255,255,255'], speedMin: 1.5, speedMax: 4.5, decayMin: 0.018, decayMax: 0.03, drag: 0.93, sizeMin: 2, sizeMax: 3.5, shape: 'rect', spin: true, spinSpeedMag: 0.5 }) },
+  { id: 'smoke', label: 'Smoke', emoji: '💨', run: (x, y) => spawnBurst(x, y, { count: 20, colors: ['80,80,78', '120,118,110'], speedMin: 0.3, speedMax: 1.2, vyBias: -1, decayMin: 0.006, decayMax: 0.012, drag: 0.97, sizeMin: 4, sizeMax: 8 }) },
+  { id: 'ice', label: 'Ice Shards', emoji: '🧊', run: (x, y) => spawnBurst(x, y, { count: 40, colors: ['180,230,255', '255,255,255', '120,200,240'], speedMin: 2, speedMax: 6, decayMin: 0.02, decayMax: 0.035, gravity: true, sizeMin: 1.5, sizeMax: 3, shape: 'rect', spin: true }) },
+  { id: 'cash', label: 'Cash Rain', emoji: '💵', run: (x, y) => spawnBurst(x, y, { count: 45, colors: ['120,200,110', '90,170,90', '200,230,150'], directional: true, angleBase: -Math.PI / 2, spreadRad: 2.6, speedMin: 2, speedMax: 5, vyBias: -1.5, decayMin: 0.01, decayMax: 0.016, gravity: true, sizeMin: 2, sizeMax: 3.5, shape: 'rect', spin: true, spinSpeedMag: 0.2 }) },
+  { id: 'disco', label: 'Disco', emoji: '🪩', run: runDisco }
 ];
 
-function updateCelebrationBtn(){
-  const opt = CELEBRATION_OPTIONS.find(o => o.id === celebrationEffect);
-  celebrationBtn.textContent = `Celebration: ${opt.label}`;
+function triggerCelebrationEffect(x, y){
+  const opt = CELEBRATION_LIBRARY.find(o => o.id === celebrationEffect) || CELEBRATION_LIBRARY[0];
+  opt.run(x, y);
 }
-celebrationBtn.addEventListener('click', () => {
-  const idx = CELEBRATION_OPTIONS.findIndex(o => o.id === celebrationEffect);
-  celebrationEffect = CELEBRATION_OPTIONS[(idx + 1) % CELEBRATION_OPTIONS.length].id;
+
+function selectCelebration(id){
+  celebrationEffect = id;
+  try { localStorage.setItem('kickabout_celebration', id); } catch(e) {}
   updateCelebrationBtn();
-  // quick preview burst so you can see what you picked
+  renderCelebrationGrid();
   triggerCelebrationEffect(CENTER_X, CENTER_Y);
+}
+
+function updateCelebrationBtn(){
+  const opt = CELEBRATION_LIBRARY.find(o => o.id === celebrationEffect);
+  celebrationBtn.textContent = `${opt.emoji} Celebration: ${opt.label}`;
+}
+
+function renderCelebrationGrid(){
+  celebrationGrid.innerHTML = '';
+  CELEBRATION_LIBRARY.forEach(opt => {
+    const card = document.createElement('button');
+    card.className = 'opt-card' + (opt.id === celebrationEffect ? ' active' : '');
+    card.innerHTML = `<div class="opt-card-emoji">${opt.emoji}</div><div class="opt-card-label">${opt.label}</div>`;
+    card.addEventListener('click', () => selectCelebration(opt.id));
+    celebrationGrid.appendChild(card);
+  });
+}
+
+celebrationBtn.addEventListener('click', () => {
+  renderCelebrationGrid();
+  celebrationOverlay.style.display = 'flex';
 });
+celebrationCloseBtn.addEventListener('click', () => { celebrationOverlay.style.display = 'none'; });
 updateCelebrationBtn();
 
-function spawnConfettiBurst(x, y){
-  const colors = ['255,90,78', '255,207,92', '155,227,138', '93,180,255', '255,255,255', '200,120,255'];
-  for (let i = 0; i < 160; i++) {
-    const ang = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 0.95;
-    const spd = (4 + Math.random() * 7.5) * SCALE;
-    particles.push({
-      x, y,
-      vx: Math.cos(ang) * spd,
-      vy: Math.sin(ang) * spd - 3 * SCALE,
-      life: 1,
-      decay: 0.0045,
-      gravity: true,
-      shape: 'rect',
-      size: (4 + Math.random() * 5) * SCALE,
-      spin: Math.random() * Math.PI * 2,
-      spinSpeed: (Math.random() - 0.5) * 0.3,
-      color: colors[Math.floor(Math.random() * colors.length)]
-    });
-  }
+// ---------- Character color customization ----------
+const PLAYER_COLOR_SWATCHES = [
+  { id: 'red', hex: '#ff5a4e', label: 'Red' },
+  { id: 'blue', hex: '#2d9cdb', label: 'Blue' },
+  { id: 'green', hex: '#4cd97b', label: 'Green' },
+  { id: 'yellow', hex: '#ffd447', label: 'Yellow' },
+  { id: 'purple', hex: '#b267ff', label: 'Purple' },
+  { id: 'orange', hex: '#ff8c42', label: 'Orange' },
+  { id: 'pink', hex: '#ff6fb0', label: 'Pink' },
+  { id: 'teal', hex: '#22c1b8', label: 'Teal' },
+  { id: 'white', hex: '#f4f1ea', label: 'White' },
+  { id: 'graphite', hex: '#4a4a4a', label: 'Graphite' },
+  { id: 'cyan', hex: '#4fd8ea', label: 'Cyan' },
+  { id: 'gold', hex: '#ffcf5c', label: 'Gold' }
+];
+
+function selectPlayerColor(hex){
+  COLOR_PLAYER = hex;
+  try { localStorage.setItem('kickabout_player_color', hex); } catch(e) {}
+  homeAvatar.style.background = hex;
+  renderColorGrid();
+  colorOverlay.style.display = 'none';
 }
 
-function spawnBombBurst(x, y){
-  for (let i = 0; i < 130; i++) {
-    const ang = Math.random() * Math.PI * 2;
-    const spd = (3 + Math.random() * 10) * SCALE;
-    const hot = Math.random() < 0.5;
-    particles.push({
-      x, y,
-      vx: Math.cos(ang) * spd,
-      vy: Math.sin(ang) * spd,
-      life: 1,
-      decay: 0.007 + Math.random() * 0.007,
-      drag: 0.93,
-      size: (5 + Math.random() * 8) * SCALE,
-      color: hot ? '255,207,92' : '255,90,78'
-    });
-  }
-  // dark smoke puff underneath
-  for (let i = 0; i < 40; i++) {
-    const ang = Math.random() * Math.PI * 2;
-    const spd = (0.6 + Math.random() * 2.8) * SCALE;
-    particles.push({
-      x, y,
-      vx: Math.cos(ang) * spd,
-      vy: Math.sin(ang) * spd,
-      life: 1,
-      decay: 0.0038,
-      drag: 0.96,
-      size: (8 + Math.random() * 9) * SCALE,
-      color: '40,38,34'
-    });
-  }
-  triggerShake(30 * SCALE);
+function renderColorGrid(){
+  colorGrid.innerHTML = '';
+  PLAYER_COLOR_SWATCHES.forEach(sw => {
+    const card = document.createElement('button');
+    card.className = 'swatch-card' + (sw.hex.toLowerCase() === COLOR_PLAYER.toLowerCase() ? ' active' : '');
+    card.innerHTML = `<div class="swatch-circle" style="background:${sw.hex};"></div><div class="swatch-label">${sw.label}</div>`;
+    card.addEventListener('click', () => selectPlayerColor(sw.hex));
+    colorGrid.appendChild(card);
+  });
 }
 
-function spawnFireworksBurst(x, y){
-  const colors = ['255,90,78', '255,207,92', '155,227,138', '93,180,255', '255,255,255'];
-  const bursts = 6;
-  for (let b = 0; b < bursts; b++) {
-    const bx = x + (Math.random() - 0.5) * 320 * SCALE;
-    const by = y - 80 * SCALE - Math.random() * 130 * SCALE;
-    const color = colors[Math.floor(Math.random() * colors.length)];
-    for (let i = 0; i < 64; i++) {
-      const ang = (i / 64) * Math.PI * 2;
-      const spd = (3.4 + Math.random() * 3.8) * SCALE;
-      particles.push({
-        x: bx, y: by,
-        vx: Math.cos(ang) * spd,
-        vy: Math.sin(ang) * spd,
-        life: 1,
-        decay: 0.0065,
-        gravity: true,
-        drag: 0.975,
-        size: (3 + Math.random() * 2.8) * SCALE,
-        color
-      });
-    }
-  }
-}
+avatarBtn.addEventListener('click', () => {
+  renderColorGrid();
+  colorOverlay.style.display = 'flex';
+});
+colorCloseBtn.addEventListener('click', () => { colorOverlay.style.display = 'none'; });
+homeAvatar.style.background = COLOR_PLAYER;
+// ---------- end customization ----------
 
-function triggerCelebrationEffect(x, y){
-  if (celebrationEffect === 'confetti') spawnConfettiBurst(x, y);
-  else if (celebrationEffect === 'bomb') spawnBombBurst(x, y);
-  else if (celebrationEffect === 'fireworks') spawnFireworksBurst(x, y);
-  else spawnParticles(x, y, 55, -Math.PI / 2, 2.2, 0.009); // classic — bigger, longer-lived spray
-}
 
 function scoreGoal(side){
   if (matchMode === 'duel' || matchMode === 'multiplayer') {
