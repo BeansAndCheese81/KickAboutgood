@@ -562,16 +562,48 @@ mpHostBtn.addEventListener('click', () => {
   mpIntroSub.style.display = 'none';
   mpHostPanel.style.display = 'flex';
   isHost = true;
+  mpHostCode.textContent = '…';
+  mpHostStatus.innerHTML = '<span class="mp-dot pulse"></span>Setting up your room…';
+  mpHostStatus.className = 'mp-status';
   const id = shortCode();
   peer = new Peer(id);
-  peer.on('open', () => { mpHostCode.textContent = id; });
+  peer.on('open', () => {
+    mpHostCode.textContent = id;
+    mpHostStatus.innerHTML = '<span class="mp-dot pulse"></span>Room ready — waiting for opponent…';
+    mpHostStatus.className = 'mp-status';
+  });
   peer.on('connection', c => {
     if (conn) { c.close(); return; } // only one opponent
+    mpHostStatus.innerHTML = '<span class="mp-dot pulse"></span>Opponent found — finishing connection…';
     conn = c;
+    conn.on('error', err => {
+      mpHostStatus.innerHTML = '<span class="mp-dot"></span>Connection dropped: ' + (err && err.type ? err.type : 'unknown error');
+      mpHostStatus.className = 'mp-status err';
+      console.error(err);
+    });
     setupConnection();
   });
+  peer.on('disconnected', () => {
+    mpHostStatus.innerHTML = 'Lost connection to the network — retrying…';
+    mpHostStatus.className = 'mp-status err';
+  });
   peer.on('error', err => {
-    mpHostStatus.innerHTML = 'Connection error — try again';
+    const type = err && err.type;
+    let msg;
+    if (type === 'unavailable-id') {
+      msg = 'That room code is already taken — click Host again for a new one.';
+    } else if (type === 'network') {
+      msg = 'Network error reaching the connection server. Check your internet and try again.';
+    } else if (type === 'browser-incompatible') {
+      msg = 'This browser doesn\u2019t support the tech multiplayer needs — try Chrome, Safari, or Firefox.';
+    } else if (type === 'webrtc') {
+      msg = 'Your network or browser blocked the direct connection (common on some work/school wifi).';
+    } else if (type === 'server-error' || type === 'socket-error' || type === 'socket-closed') {
+      msg = 'Could not reach the connection server. Try again in a moment.';
+    } else {
+      msg = 'Connection error (' + (type || 'unknown') + '). Try again.';
+    }
+    mpHostStatus.innerHTML = msg;
     mpHostStatus.className = 'mp-status err';
     console.error(err);
   });
@@ -588,30 +620,83 @@ mpJoinConnectBtn.addEventListener('click', () => {
   const code = mpJoinInput.value.trim();
   if (!code) return;
   isHost = false;
-  mpJoinStatus.textContent = 'Connecting…';
-  mpJoinStatus.className = 'mp-status';
+  mpJoinConnectBtn.disabled = true;
+  setJoinStatus('Setting up your connection…', 'pending');
+
   peer = new Peer();
+  let settled = false;
+  let timeoutId = null;
+
   peer.on('open', () => {
+    setJoinStatus('Looking for host "' + code + '"…', 'pending');
     conn = peer.connect(code, { reliable: true });
+
+    timeoutId = setTimeout(() => {
+      if (!settled) {
+        setJoinStatus("Still no response — double-check the code, and make sure your friend's Host screen is still open.", 'err');
+        mpJoinConnectBtn.disabled = false;
+      }
+    }, 8000);
+
+    conn.on('open', () => {
+      settled = true;
+      clearTimeout(timeoutId);
+    });
+    conn.on('error', err => {
+      settled = true;
+      clearTimeout(timeoutId);
+      mpJoinConnectBtn.disabled = false;
+      setJoinStatus('Connection dropped: ' + (err && err.type ? err.type : 'unknown error') + '. Try again.', 'err');
+      console.error(err);
+    });
+
     setupConnection();
   });
+
+  peer.on('disconnected', () => {
+    if (!settled) setJoinStatus('Lost connection to the network — retrying…', 'pending');
+  });
+
   peer.on('error', err => {
-    mpJoinStatus.textContent = 'Could not connect — check the code';
-    mpJoinStatus.className = 'mp-status err';
+    settled = true;
+    clearTimeout(timeoutId);
+    mpJoinConnectBtn.disabled = false;
+    const type = err && err.type;
+    let msg;
+    if (type === 'peer-unavailable') {
+      msg = 'No host found with that code. Check it\u2019s typed exactly right — codes look like "kb-x7f2q".';
+    } else if (type === 'network') {
+      msg = 'Network error reaching the connection server. Check your internet and try again.';
+    } else if (type === 'browser-incompatible') {
+      msg = 'This browser doesn\u2019t support the tech multiplayer needs — try Chrome, Safari, or Firefox.';
+    } else if (type === 'webrtc') {
+      msg = 'Your network or browser blocked the direct connection (common on some work/school wifi). Try a different network.';
+    } else if (type === 'server-error' || type === 'socket-error' || type === 'socket-closed') {
+      msg = 'Could not reach the connection server. Try again in a moment.';
+    } else {
+      msg = 'Connection failed (' + (type || 'unknown') + '). Try again.';
+    }
+    setJoinStatus(msg, 'err');
     console.error(err);
   });
 });
 
+function setJoinStatus(text, kind){
+  const dot = kind === 'pending' ? '<span class="mp-dot pulse"></span>' : (kind === 'ok' ? '<span class="mp-dot live"></span>' : '');
+  mpJoinStatus.innerHTML = dot + text;
+  mpJoinStatus.className = 'mp-status' + (kind === 'ok' ? ' ok' : kind === 'err' ? ' err' : '');
+}
+
 function setupConnection(){
   conn.on('open', () => {
     mpConnected = true;
+    mpJoinConnectBtn.disabled = false;
     if (isHost) {
       mpHostStatus.innerHTML = '<span class="mp-dot live"></span>Opponent connected!';
       mpHostStatus.className = 'mp-status ok';
       mpStartBtn.style.display = 'inline-block';
     } else {
-      mpJoinStatus.innerHTML = '<span class="mp-dot live"></span>Connected — waiting for host to start…';
-      mpJoinStatus.className = 'mp-status ok';
+      setJoinStatus('Connected — waiting for host to start…', 'ok');
     }
   });
   conn.on('data', handleMpData);
@@ -724,6 +809,7 @@ function applyRemoteOpponent(o){
 // ---------- end multiplayer ----------
 
 window.addEventListener('keydown', e => {
+  if (document.activeElement && document.activeElement.tagName === 'INPUT') return; // let typing work normally in text fields
   if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyW','KeyA','KeyS','KeyD'].includes(e.code)) {
     e.preventDefault();
   }
@@ -753,6 +839,7 @@ window.addEventListener('keydown', e => {
   if (e.code === 'KeyM') toggleMute();
 });
 window.addEventListener('keyup', e => {
+  if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
   keys.delete(e.code);
   if (e.code === 'Space') {
     spaceDown = false;
