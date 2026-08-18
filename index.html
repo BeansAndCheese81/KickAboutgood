@@ -514,6 +514,19 @@ function freshState(){
 }
 let state = freshState();
 
+// Public STUN/TURN fallback so connections still work behind strict wifi/firewalls
+// (TURN relay is needed when a direct peer-to-peer link gets blocked)
+const PEER_CONFIG = {
+  config: {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+    ]
+  }
+};
+
 // ---------- Multiplayer (PeerJS, host-authoritative) ----------
 let peer = null;
 let conn = null;
@@ -566,7 +579,7 @@ mpHostBtn.addEventListener('click', () => {
   mpHostStatus.innerHTML = '<span class="mp-dot pulse"></span>Setting up your room…';
   mpHostStatus.className = 'mp-status';
   const id = shortCode();
-  peer = new Peer(id);
+  peer = new Peer(id, PEER_CONFIG);
   peer.on('open', () => {
     mpHostCode.textContent = id;
     mpHostStatus.innerHTML = '<span class="mp-dot pulse"></span>Room ready — waiting for opponent…';
@@ -623,7 +636,7 @@ mpJoinConnectBtn.addEventListener('click', () => {
   mpJoinConnectBtn.disabled = true;
   setJoinStatus('Setting up your connection…', 'pending');
 
-  peer = new Peer();
+  peer = new Peer(PEER_CONFIG);
   let settled = false;
   let timeoutId = null;
 
@@ -636,7 +649,7 @@ mpJoinConnectBtn.addEventListener('click', () => {
         setJoinStatus("Still no response — double-check the code, and make sure your friend's Host screen is still open.", 'err');
         mpJoinConnectBtn.disabled = false;
       }
-    }, 8000);
+    }, 14000);
 
     conn.on('open', () => {
       settled = true;
