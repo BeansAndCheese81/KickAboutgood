@@ -171,6 +171,31 @@
     height:100%;width:100%;border-radius:999px;background:#9be38a;
     transition:width .1s linear, background .15s ease;
   }
+
+  .mp-choice{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+  .mp-panel{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:320px;}
+  .mp-code{
+    font-family:'Anton',sans-serif;font-size:40px;letter-spacing:.04em;color:var(--accent);
+    background:var(--panel-2);border:1px solid #223a2c;border-radius:12px;
+    padding:14px 22px;text-shadow:0 0 18px rgba(255,207,92,.3);
+    user-select:all;cursor:pointer;word-break:break-all;text-align:center;line-height:1.1;
+  }
+  .mp-input{
+    width:100%;background:var(--panel-2);border:1px solid #223a2c;color:var(--ink);
+    font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;text-align:center;
+    padding:12px 14px;border-radius:10px;letter-spacing:.02em;
+  }
+  .mp-input:focus{outline:none;border-color:var(--player);}
+  .mp-status{font-size:12.5px;color:var(--dim);font-weight:600;min-height:16px;text-align:center;}
+  .mp-status.ok{color:#9be38a;}
+  .mp-status.err{color:#e28981;}
+  .mp-dot{
+    display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--dim);
+    margin-right:6px;vertical-align:middle;
+  }
+  .mp-dot.pulse{background:#ffcf5c;animation:mpPulse 1s ease-in-out infinite;}
+  .mp-dot.live{background:#9be38a;}
+  @keyframes mpPulse{0%,100%{opacity:1;}50%{opacity:.35;}}
 </style>
 </head>
 <body>
@@ -227,11 +252,11 @@
           <div class="mode-card-name">1v1 Duel</div>
           <div class="mode-card-meta">vs CPU · 75s</div>
         </button>
-        <button class="mode-card disabled" id="multiplayerBtn">
-          <div class="mode-card-tag">Coming Soon</div>
+        <button class="mode-card" id="multiplayerBtn">
+          <div class="mode-card-tag">Beta</div>
           <div class="mode-card-label">Play</div>
           <div class="mode-card-name">Multiplayer</div>
-          <div class="mode-card-meta">Online vs friends</div>
+          <div class="mode-card-meta">Online 1v1 vs a friend</div>
         </button>
       </div>
 
@@ -257,6 +282,40 @@
       </div>
       <div class="overlay-buttons">
         <button class="btn btn-primary" id="howToCloseBtn">Got it</button>
+      </div>
+    </div>
+
+    <div class="overlay overlay-top" id="mpOverlay">
+      <div class="overlay-title" style="font-size:30px;">Multiplayer</div>
+      <div class="overlay-sub" id="mpIntroSub">Host a game and send the code to a friend, or join theirs. Free, peer-to-peer, no account needed.</div>
+
+      <div class="mp-choice" id="mpChoiceRow">
+        <button class="btn btn-primary" id="mpHostBtn">Host a Game</button>
+        <button class="btn btn-secondary" id="mpJoinBtn">Join a Game</button>
+      </div>
+
+      <div class="mp-panel" id="mpHostPanel" style="display:none;">
+        <div class="overlay-sub" style="margin-top:0;">Share this code with your friend</div>
+        <div class="mp-code" id="mpHostCode">…</div>
+        <div class="mp-status" id="mpHostStatus"><span class="mp-dot pulse"></span>Waiting for opponent…</div>
+        <div class="overlay-buttons" style="margin-top:0;">
+          <button class="btn btn-primary" id="mpStartBtn" style="display:none;">Start Match</button>
+          <button class="btn btn-secondary" id="mpHostCancelBtn">Cancel</button>
+        </div>
+      </div>
+
+      <div class="mp-panel" id="mpJoinPanel" style="display:none;">
+        <div class="overlay-sub" style="margin-top:0;">Enter your friend's code</div>
+        <input class="mp-input" id="mpJoinInput" placeholder="Room code" autocomplete="off" spellcheck="false">
+        <div class="mp-status" id="mpJoinStatus"></div>
+        <div class="overlay-buttons" style="margin-top:0;">
+          <button class="btn btn-primary" id="mpJoinConnectBtn">Connect</button>
+          <button class="btn btn-secondary" id="mpJoinCancelBtn">Cancel</button>
+        </div>
+      </div>
+
+      <div class="overlay-buttons" id="mpBackRow">
+        <button class="btn btn-secondary" id="mpBackBtn">Back to Menu</button>
       </div>
     </div>
 
@@ -293,6 +352,7 @@
   </div>
 </div>
 
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
 const canvas = document.getElementById('pitch');
 const ctx = canvas.getContext('2d');
@@ -320,6 +380,24 @@ const resultBestEl = document.getElementById('resultBest');
 const muteBtn = document.getElementById('muteBtn');
 const scoreLabelEl = document.getElementById('scoreLabel');
 const duelBtn = document.getElementById('duelBtn');
+const multiplayerBtn = document.getElementById('multiplayerBtn');
+const mpOverlay = document.getElementById('mpOverlay');
+const mpIntroSub = document.getElementById('mpIntroSub');
+const mpChoiceRow = document.getElementById('mpChoiceRow');
+const mpHostBtn = document.getElementById('mpHostBtn');
+const mpJoinBtn = document.getElementById('mpJoinBtn');
+const mpHostPanel = document.getElementById('mpHostPanel');
+const mpHostCode = document.getElementById('mpHostCode');
+const mpHostStatus = document.getElementById('mpHostStatus');
+const mpStartBtn = document.getElementById('mpStartBtn');
+const mpHostCancelBtn = document.getElementById('mpHostCancelBtn');
+const mpJoinPanel = document.getElementById('mpJoinPanel');
+const mpJoinInput = document.getElementById('mpJoinInput');
+const mpJoinStatus = document.getElementById('mpJoinStatus');
+const mpJoinConnectBtn = document.getElementById('mpJoinConnectBtn');
+const mpJoinCancelBtn = document.getElementById('mpJoinCancelBtn');
+const mpBackRow = document.getElementById('mpBackRow');
+const mpBackBtn = document.getElementById('mpBackBtn');
 const staminaFillEl = document.getElementById('staminaFill');
 const replayOverlay = document.getElementById('replayOverlay');
 const replaySkipBtn = document.getElementById('replaySkipBtn');
@@ -436,6 +514,215 @@ function freshState(){
 }
 let state = freshState();
 
+// ---------- Multiplayer (PeerJS, host-authoritative) ----------
+let peer = null;
+let conn = null;
+let isHost = false;
+let mpConnected = false;
+let remoteInput = { ax: 0, ay: 0, sprint: false };
+
+function shortCode(){
+  // shorter, easier-to-read/share code than PeerJS's default long id
+  return 'kb-' + Math.random().toString(36).slice(2, 7);
+}
+
+function resetMpPanels(){
+  mpChoiceRow.style.display = 'flex';
+  mpHostPanel.style.display = 'none';
+  mpJoinPanel.style.display = 'none';
+  mpBackRow.style.display = 'flex';
+  mpIntroSub.style.display = 'block';
+  mpStartBtn.style.display = 'none';
+  mpHostStatus.innerHTML = '<span class="mp-dot pulse"></span>Waiting for opponent…';
+  mpHostStatus.className = 'mp-status';
+  mpJoinStatus.textContent = '';
+  mpJoinStatus.className = 'mp-status';
+  mpJoinInput.value = '';
+}
+
+function closeMultiplayer(){
+  if (conn) { try { conn.close(); } catch(e){} conn = null; }
+  if (peer) { try { peer.destroy(); } catch(e){} peer = null; }
+  isHost = false;
+  mpConnected = false;
+}
+
+function openMultiplayerMenu(){
+  resetMpPanels();
+  mpOverlay.style.display = 'flex';
+}
+
+multiplayerBtn.addEventListener('click', openMultiplayerMenu);
+mpBackBtn.addEventListener('click', () => { closeMultiplayer(); mpOverlay.style.display = 'none'; });
+mpHostCancelBtn.addEventListener('click', () => { closeMultiplayer(); resetMpPanels(); });
+mpJoinCancelBtn.addEventListener('click', () => { closeMultiplayer(); resetMpPanels(); });
+
+mpHostBtn.addEventListener('click', () => {
+  mpChoiceRow.style.display = 'none';
+  mpIntroSub.style.display = 'none';
+  mpHostPanel.style.display = 'flex';
+  isHost = true;
+  const id = shortCode();
+  peer = new Peer(id);
+  peer.on('open', () => { mpHostCode.textContent = id; });
+  peer.on('connection', c => {
+    if (conn) { c.close(); return; } // only one opponent
+    conn = c;
+    setupConnection();
+  });
+  peer.on('error', err => {
+    mpHostStatus.innerHTML = 'Connection error — try again';
+    mpHostStatus.className = 'mp-status err';
+    console.error(err);
+  });
+});
+
+mpJoinBtn.addEventListener('click', () => {
+  mpChoiceRow.style.display = 'none';
+  mpIntroSub.style.display = 'none';
+  mpJoinPanel.style.display = 'flex';
+  mpJoinInput.focus();
+});
+
+mpJoinConnectBtn.addEventListener('click', () => {
+  const code = mpJoinInput.value.trim();
+  if (!code) return;
+  isHost = false;
+  mpJoinStatus.textContent = 'Connecting…';
+  mpJoinStatus.className = 'mp-status';
+  peer = new Peer();
+  peer.on('open', () => {
+    conn = peer.connect(code, { reliable: true });
+    setupConnection();
+  });
+  peer.on('error', err => {
+    mpJoinStatus.textContent = 'Could not connect — check the code';
+    mpJoinStatus.className = 'mp-status err';
+    console.error(err);
+  });
+});
+
+function setupConnection(){
+  conn.on('open', () => {
+    mpConnected = true;
+    if (isHost) {
+      mpHostStatus.innerHTML = '<span class="mp-dot live"></span>Opponent connected!';
+      mpHostStatus.className = 'mp-status ok';
+      mpStartBtn.style.display = 'inline-block';
+    } else {
+      mpJoinStatus.innerHTML = '<span class="mp-dot live"></span>Connected — waiting for host to start…';
+      mpJoinStatus.className = 'mp-status ok';
+    }
+  });
+  conn.on('data', handleMpData);
+  conn.on('close', () => {
+    mpConnected = false;
+    if (screen === 'playing' && matchMode === 'multiplayer') {
+      flashText = null;
+      goToMenu();
+      mpOverlay.style.display = 'flex';
+      resetMpPanels();
+      mpIntroSub.textContent = 'Your opponent disconnected.';
+      mpIntroSub.style.display = 'block';
+    }
+  });
+}
+
+mpStartBtn.addEventListener('click', () => {
+  if (!isHost || !mpConnected) return;
+  mpOverlay.style.display = 'none';
+  conn.send({ type: 'start' });
+  startMatch('multiplayer');
+});
+
+function handleMpData(data){
+  if (!data || !data.type) return;
+  if (isHost) {
+    if (data.type === 'move') {
+      remoteInput.ax = data.ax; remoteInput.ay = data.ay; remoteInput.sprint = data.sprint;
+    } else if (data.type === 'kick') {
+      kickBall(state.opponent, data.power);
+    } else if (data.type === 'tackle') {
+      attemptTackle(state.opponent, state.player);
+    }
+  } else {
+    if (data.type === 'start') {
+      mpOverlay.style.display = 'none';
+      startMatch('multiplayer');
+    } else if (data.type === 'state') {
+      applyRemoteState(data);
+    }
+  }
+}
+
+function applyRemoteState(d){
+  state.player.x = d.px; state.player.y = d.py; state.player.facing = d.pf;
+  state.player.tackling = d.pt;
+  state.opponent.x = d.ox; state.opponent.y = d.oy; state.opponent.facing = d.of;
+  state.opponent.tackling = d.ot;
+  state.ball.x = d.bx; state.ball.y = d.by; state.ball.spin = d.bspin;
+  score = d.score; cpuScore = d.cpuScore;
+  matchTimeLeft = d.time;
+  updateTimeDisplay();
+  scoreLabelEl.textContent = 'You — Opponent';
+  scoreEl.textContent = `${cpuScore} – ${score}`;
+  celebrating = d.celebrating;
+  // host's flashText is written from the host's point of view — flip it for the guest
+  if (d.flashText === 'YOU SCORE!') flashText = 'OPPONENT SCORES';
+  else if (d.flashText === 'OPPONENT SCORES') flashText = 'YOU SCORE!';
+  else flashText = d.flashText;
+  if (d.screen === 'result' && screen !== 'result') {
+    const outcome = d.score > d.cpuScore ? 'You Lose' : (d.score < d.cpuScore ? 'You Win!' : 'Draw');
+    resultScoreEl.textContent = `${d.cpuScore} – ${d.score}`;
+    resultBestEl.textContent = outcome;
+    showScreen('result');
+  } else if (d.screen === 'playing' && screen !== 'playing') {
+    showScreen('playing');
+  }
+}
+
+function sendHostSnapshot(){
+  if (!conn || !mpConnected) return;
+  conn.send({
+    type: 'state',
+    px: state.player.x, py: state.player.y, pf: state.player.facing, pt: state.player.tackling,
+    ox: state.opponent.x, oy: state.opponent.y, of: state.opponent.facing, ot: state.opponent.tackling,
+    bx: state.ball.x, by: state.ball.y, bspin: state.ball.spin,
+    score, cpuScore, time: matchTimeLeft,
+    celebrating, flashText, screen
+  });
+}
+
+function applyRemoteOpponent(o){
+  let ax = remoteInput.ax, ay = remoteInput.ay;
+  if (o.stamina === undefined) o.stamina = STAMINA_MAX;
+  const wantSprint = remoteInput.sprint && (ax !== 0 || ay !== 0);
+  if (wantSprint) { if (o.sprinting || o.stamina > STAMINA_MIN_TO_START) o.sprinting = true; }
+  else { o.sprinting = false; }
+  if (o.sprinting) { o.stamina = Math.max(0, o.stamina - STAMINA_DRAIN); if (o.stamina <= 0) o.sprinting = false; }
+  else { o.stamina = Math.min(STAMINA_MAX, o.stamina + STAMINA_REGEN); }
+  const speedMul = o.sprinting ? SPRINT_MULTIPLIER : 1;
+
+  if (o.tackling) {
+    o.vx = Math.cos(o.dashAngle) * DASH_SPEED;
+    o.vy = Math.sin(o.dashAngle) * DASH_SPEED;
+  } else if ((ax !== 0 || ay !== 0) && o.stumble <= 0) {
+    const len = Math.hypot(ax, ay); ax /= len; ay /= len;
+    o.vx += ax * PLAYER_ACCEL * speedMul;
+    o.vy += ay * PLAYER_ACCEL * speedMul;
+    const sp = Math.hypot(o.vx, o.vy);
+    const maxSp = PLAYER_MAX_SPEED * speedMul;
+    if (sp > maxSp) { o.vx = o.vx / sp * maxSp; o.vy = o.vy / sp * maxSp; }
+    o.facing = Math.atan2(o.vy, o.vx);
+  }
+  if (!o.tackling) { o.vx *= PLAYER_FRICTION; o.vy *= PLAYER_FRICTION; }
+  o.x += o.vx; o.y += o.vy;
+  o.x = clamp(o.x, FIELD_L + PLAYER_R, FIELD_R - PLAYER_R);
+  o.y = clamp(o.y, FIELD_T + PLAYER_R, FIELD_B - PLAYER_R);
+  maybeSprintDust(o);
+}
+// ---------- end multiplayer ----------
+
 window.addEventListener('keydown', e => {
   if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyW','KeyA','KeyS','KeyD'].includes(e.code)) {
     e.preventDefault();
@@ -454,7 +741,11 @@ window.addEventListener('keydown', e => {
   if (e.code === 'KeyE' && screen === 'playing' && !celebrating && matchMode === 'duel') {
     attemptTackle(state.player, state.opponent);
   }
-  if (e.code === 'Escape') {
+  if (e.code === 'KeyE' && screen === 'playing' && !celebrating && matchMode === 'multiplayer') {
+    if (isHost) attemptTackle(state.player, state.opponent);
+    else if (conn && mpConnected) conn.send({ type: 'tackle' });
+  }
+  if (e.code === 'Escape' && !(matchMode === 'multiplayer' && !isHost)) {
     if (inReplay) skipReplay();
     else if (screen === 'playing') showScreen('paused');
     else if (screen === 'paused') showScreen('playing');
@@ -467,7 +758,13 @@ window.addEventListener('keyup', e => {
     spaceDown = false;
     if (charging) {
       charging = false;
-      releasePlayerKick();
+      if (matchMode === 'multiplayer' && !isHost) {
+        const power = MIN_KICK_FRAC + (1 - MIN_KICK_FRAC) * chargePower;
+        if (conn && mpConnected) conn.send({ type: 'kick', power });
+        chargePower = 0;
+      } else {
+        releasePlayerKick();
+      }
     }
   }
 });
@@ -527,6 +824,12 @@ function startMatch(mode){
     updateTimeDisplay();
     scoreEl.textContent = '0 – 0';
     scoreLabelEl.textContent = 'You — CPU';
+  } else if (matchMode === 'multiplayer') {
+    matchTimeLeft = DUEL_SECONDS;
+    lastShownSecond = -1;
+    updateTimeDisplay();
+    scoreEl.textContent = '0 – 0';
+    scoreLabelEl.textContent = 'You — Opponent';
   } else {
     timeEl.textContent = '∞';
     timeEl.classList.remove('low');
@@ -549,7 +852,7 @@ function updateStaminaUI(){
 }
 
 function endMatch(){
-  if (matchMode === 'duel') {
+  if (matchMode === 'duel' || matchMode === 'multiplayer') {
     const outcome = score > cpuScore ? 'You Win!' : (score < cpuScore ? 'You Lose' : 'Draw');
     resultScoreEl.textContent = `${score} – ${cpuScore}`;
     resultBestEl.textContent = outcome;
@@ -560,9 +863,11 @@ function endMatch(){
     menuBestEl.textContent = `Best ${bestScore}`;
   }
   showScreen('result');
+  if (matchMode === 'multiplayer' && isHost) sendHostSnapshot();
 }
 
 function goToMenu(){
+  if (matchMode === 'multiplayer') closeMultiplayer();
   state = freshState();
   updateTimeDisplay();
   showScreen('menu');
@@ -576,8 +881,8 @@ pauseRestartBtn.addEventListener('click', () => startMatch());
 pauseMenuBtn.addEventListener('click', goToMenu);
 playAgainBtn.addEventListener('click', () => startMatch());
 resultMenuBtn.addEventListener('click', goToMenu);
-pauseBtn.addEventListener('click', () => { if (screen === 'playing') showScreen('paused'); });
-restartBtn.addEventListener('click', () => startMatch());
+pauseBtn.addEventListener('click', () => { if (screen === 'playing' && !(matchMode === 'multiplayer' && !isHost)) showScreen('paused'); });
+restartBtn.addEventListener('click', () => { if (!(matchMode === 'multiplayer' && !isHost)) startMatch(); });
 howToBtn.addEventListener('click', () => { howToOverlay.style.display = 'flex'; });
 howToCloseBtn.addEventListener('click', () => { howToOverlay.style.display = 'none'; });
 muteBtn.addEventListener('click', toggleMute);
@@ -846,10 +1151,10 @@ function playReplayImpact(){
 }
 
 function scoreGoal(side){
-  if (matchMode === 'duel') {
+  if (matchMode === 'duel' || matchMode === 'multiplayer') {
     if (side === 'right') score += 1; else cpuScore += 1;
     scoreEl.textContent = `${score} – ${cpuScore}`;
-    flashText = side === 'right' ? 'YOU SCORE!' : 'CPU SCORES';
+    flashText = side === 'right' ? 'YOU SCORE!' : (matchMode === 'multiplayer' ? 'OPPONENT SCORES' : 'CPU SCORES');
   } else {
     score += 1;
     scoreEl.textContent = String(score);
@@ -861,7 +1166,7 @@ function scoreGoal(side){
   triggerShake(10 * SCALE);
   playGoal();
 
-  if (replayBuffer.length > 20) {
+  if (replayBuffer.length > 20 && matchMode !== 'multiplayer') {
     replayClip = replayBuffer.slice(-REPLAY_CLIP_FRAMES);
     replayPos = 0;
     inReplay = true;
@@ -992,6 +1297,21 @@ function update(){
   if (screen !== 'playing') return;
   frameCount++;
 
+  if (matchMode === 'multiplayer' && !isHost) {
+    // guest: no local physics — send input to host, render whatever host last sent
+    if (charging) chargePower = Math.min(1, chargePower + 1 / CHARGE_MAX_FRAMES);
+    if (conn && mpConnected) {
+      let ax = 0, ay = 0;
+      if (keys.has('KeyW') || keys.has('ArrowUp')) ay -= 1;
+      if (keys.has('KeyS') || keys.has('ArrowDown')) ay += 1;
+      if (keys.has('KeyA') || keys.has('ArrowLeft')) ax -= 1;
+      if (keys.has('KeyD') || keys.has('ArrowRight')) ax += 1;
+      const sprint = keys.has('ShiftLeft') || keys.has('ShiftRight');
+      conn.send({ type: 'move', ax, ay, sprint });
+    }
+    return;
+  }
+
   if (celebrating) {
     if (celebratePhase === 'replay') {
       if (replayStage === 'in') {
@@ -1019,7 +1339,7 @@ function update(){
     return;
   }
 
-  if (matchMode === 'attack' || matchMode === 'duel') {
+  if (matchMode === 'attack' || matchMode === 'duel' || matchMode === 'multiplayer') {
     matchTimeLeft -= 1 / 60;
     updateTimeDisplay();
     if (matchTimeLeft <= 0) {
@@ -1083,10 +1403,11 @@ function update(){
   maybeSprintDust(p);
   updateStaminaUI();
 
-  const isDuel = matchMode === 'duel';
+  const isDuel = matchMode === 'duel' || matchMode === 'multiplayer';
   updateTackleTimers(p);
   if (isDuel) updateTackleTimers(state.opponent);
-  if (isDuel) updateOpponentAI(state.opponent, b, p);
+  if (matchMode === 'duel') updateOpponentAI(state.opponent, b, p);
+  else if (matchMode === 'multiplayer') applyRemoteOpponent(state.opponent);
   processTackleHit(p, isDuel ? state.opponent : null, b);
   if (isDuel) processTackleHit(state.opponent, p, b);
 
@@ -1180,6 +1501,8 @@ function update(){
     bx: b.x, by: b.y, bspin: b.spin
   });
   if (replayBuffer.length > REPLAY_BUFFER_MAX) replayBuffer.shift();
+
+  if (matchMode === 'multiplayer' && isHost) sendHostSnapshot();
 }
 
 function drawPitch(){
@@ -1474,7 +1797,7 @@ function drawLiveScene(){
   drawPitch();
   drawBall();
   drawAgent(state.player, COLOR_PLAYER, state.player.sprinting, state.player.tackling);
-  if (matchMode === 'duel') drawAgent(state.opponent, COLOR_OPP, false, state.opponent.tackling);
+  if (matchMode === 'duel' || matchMode === 'multiplayer') drawAgent(state.opponent, COLOR_OPP, false, state.opponent.tackling);
   drawParticles();
   drawTackleFX();
   drawKickFX();
@@ -1557,7 +1880,7 @@ function render(){
     else renderReplayFrame();
   } else {
     drawLiveScene();
-    drawChargeMeter();
+    if (!(matchMode === 'multiplayer' && !isHost)) drawChargeMeter();
   }
   ctx.restore();
   drawFlash();
