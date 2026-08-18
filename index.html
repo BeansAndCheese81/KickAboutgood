@@ -152,6 +152,21 @@
 
   .overlay-top{z-index:10;background:rgba(6,17,12,.9);backdrop-filter:blur(4px);}
   .howto-list{display:flex;flex-direction:column;gap:11px;text-align:left;max-width:300px;}
+  .settings-row{display:flex;flex-direction:column;gap:9px;align-items:flex-start;width:100%;max-width:300px;text-align:left;}
+  .settings-label{font-size:11.5px;color:var(--dim);font-weight:700;text-transform:uppercase;letter-spacing:.06em;}
+  .settings-label-note{opacity:.65;font-weight:500;text-transform:none;letter-spacing:0;margin-left:4px;}
+  .segmented{display:flex;gap:6px;width:100%;}
+  .segmented button{
+    flex:1;background:var(--panel-2);border:1px solid #223a2c;color:var(--ink);
+    font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12.5px;
+    padding:8px 10px;border-radius:8px;cursor:pointer;
+    transition:border-color .15s ease, background .15s ease, color .15s ease;
+  }
+  .segmented button:hover{border-color:var(--player);}
+  .segmented button.active{background:var(--player);border-color:var(--player);color:#1c0a08;}
+  .volume-row{display:flex;align-items:center;gap:10px;width:100%;}
+  .volume-row input[type=range]{flex:1;accent-color:var(--player);}
+  .volume-row #volumeValue{min-width:36px;text-align:right;font-size:12px;color:var(--dim);font-weight:600;}
   .howto-row{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--ink);}
   .howto-row .keys{display:flex;gap:3px;flex-shrink:0;min-width:76px;}
 
@@ -189,6 +204,22 @@
   .mp-status{font-size:12.5px;color:var(--dim);font-weight:600;min-height:16px;text-align:center;}
   .mp-status.ok{color:#9be38a;}
   .mp-status.err{color:#e28981;}
+  .mp-browse-list{width:100%;max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;}
+  .mp-browse-empty{color:var(--dim);font-size:12.5px;font-weight:600;padding:18px 0;text-align:center;}
+  .mp-browse-row{
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--panel-2);border:1px solid #223a2c;border-radius:10px;
+    padding:10px 14px;
+  }
+  .mp-browse-row-info{display:flex;flex-direction:column;align-items:flex-start;gap:2px;}
+  .mp-browse-row-code{font-family:'Anton',sans-serif;font-size:15px;color:var(--ink);letter-spacing:.02em;}
+  .mp-browse-row-age{font-size:10.5px;color:var(--dim);font-weight:600;}
+  .mp-browse-join-btn{
+    background:var(--player);color:#1c0a08;border:none;border-radius:8px;
+    font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12px;
+    padding:7px 14px;cursor:pointer;transition:background .15s ease;
+  }
+  .mp-browse-join-btn:hover{background:#ff6f63;}
   .mp-dot{
     display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--dim);
     margin-right:6px;vertical-align:middle;
@@ -226,7 +257,11 @@
     <div class="overlay screen-home" id="menuOverlay" style="display:flex;">
       <div class="home-topbar">
         <div class="home-brand">⚽ Kickabout</div>
-        <div class="home-best">🏆 <span id="menuBest">Best 0</span></div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div class="home-best" id="menuDuelRecord" style="display:none;">⚔️ <span id="menuDuelRecordText">0W–0L</span></div>
+          <div class="home-best">🏆 <span id="menuBest">Best 0</span></div>
+          <button class="icon-btn" id="settingsBtn" title="Settings">⚙️</button>
+        </div>
       </div>
 
       <div class="home-hero">
@@ -261,7 +296,10 @@
       </div>
 
       <div class="home-footer">
-        <button class="pill-btn" id="howToBtn">How to Play</button>
+        <div style="display:flex;gap:8px;">
+          <button class="pill-btn" id="howToBtn">How to Play</button>
+          <button class="pill-btn" id="celebrationBtn">🎉 Celebration: Classic</button>
+        </div>
         <div class="home-avatar-wrap">
           <div class="home-avatar"></div>
           <div class="home-avatar-label">You</div>
@@ -285,13 +323,60 @@
       </div>
     </div>
 
+    <div class="overlay overlay-top" id="settingsOverlay">
+      <div class="overlay-title" style="font-size:30px;">Settings</div>
+
+      <div class="settings-row">
+        <div class="settings-label">Sound Volume</div>
+        <div class="volume-row">
+          <span id="volumeIcon">🔊</span>
+          <input type="range" id="volumeSlider" min="0" max="100" value="80">
+          <span id="volumeValue">80%</span>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-label">CPU Difficulty <span class="settings-label-note">(1v1 Duel)</span></div>
+        <div class="segmented" id="difficultySeg">
+          <button data-value="easy">Easy</button>
+          <button data-value="normal" class="active">Normal</button>
+          <button data-value="hard">Hard</button>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-label">Time Attack Length</div>
+        <div class="segmented" id="matchLengthSeg">
+          <button data-value="30">30s</button>
+          <button data-value="60" class="active">60s</button>
+          <button data-value="90">90s</button>
+        </div>
+      </div>
+
+      <div class="overlay-buttons">
+        <button class="btn btn-primary" id="settingsCloseBtn">Done</button>
+      </div>
+    </div>
+
     <div class="overlay overlay-top" id="mpOverlay">
       <div class="overlay-title" style="font-size:30px;">Multiplayer</div>
-      <div class="overlay-sub" id="mpIntroSub">Host a game and send the code to a friend, or join theirs. Free, peer-to-peer, no account needed.</div>
+      <div class="overlay-sub" id="mpIntroSub">Browse open games, host your own, or join with a code — free, peer-to-peer, no account needed.</div>
 
       <div class="mp-choice" id="mpChoiceRow">
-        <button class="btn btn-primary" id="mpHostBtn">Host a Game</button>
+        <button class="btn btn-primary" id="mpBrowseBtn">Browse Games</button>
+        <button class="btn btn-secondary" id="mpHostBtn">Host a Game</button>
         <button class="btn btn-secondary" id="mpJoinBtn">Join a Game</button>
+      </div>
+
+      <div class="mp-panel" id="mpBrowsePanel" style="display:none;">
+        <div class="overlay-sub" style="margin-top:0;">Open games right now</div>
+        <div class="mp-browse-list" id="mpBrowseList">
+          <div class="mp-browse-empty" id="mpBrowseEmpty">Looking for games…</div>
+        </div>
+        <div class="overlay-buttons" style="margin-top:0;">
+          <button class="btn btn-secondary" id="mpBrowseRefreshBtn">Refresh</button>
+          <button class="btn btn-secondary" id="mpBrowseCancelBtn">Cancel</button>
+        </div>
       </div>
 
       <div class="mp-panel" id="mpHostPanel" style="display:none;">
@@ -353,6 +438,7 @@
 </div>
 
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script src="https://unpkg.com/kvdb.io@v1.0"></script>
 <script>
 const canvas = document.getElementById('pitch');
 const ctx = canvas.getContext('2d');
@@ -367,6 +453,7 @@ const resultOverlay = document.getElementById('resultOverlay');
 const howToOverlay = document.getElementById('howToOverlay');
 const practiceBtn = document.getElementById('practiceBtn');
 const howToBtn = document.getElementById('howToBtn');
+const celebrationBtn = document.getElementById('celebrationBtn');
 const howToCloseBtn = document.getElementById('howToCloseBtn');
 const menuBestEl = document.getElementById('menuBest');
 const playBtn = document.getElementById('playBtn');
@@ -380,11 +467,27 @@ const resultBestEl = document.getElementById('resultBest');
 const muteBtn = document.getElementById('muteBtn');
 const scoreLabelEl = document.getElementById('scoreLabel');
 const duelBtn = document.getElementById('duelBtn');
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsOverlay = document.getElementById('settingsOverlay');
+const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+const volumeSlider = document.getElementById('volumeSlider');
+const volumeValue = document.getElementById('volumeValue');
+const volumeIcon = document.getElementById('volumeIcon');
+const difficultySeg = document.getElementById('difficultySeg');
+const matchLengthSeg = document.getElementById('matchLengthSeg');
+const menuDuelRecord = document.getElementById('menuDuelRecord');
+const menuDuelRecordText = document.getElementById('menuDuelRecordText');
 const multiplayerBtn = document.getElementById('multiplayerBtn');
 const mpOverlay = document.getElementById('mpOverlay');
 const mpIntroSub = document.getElementById('mpIntroSub');
 const mpChoiceRow = document.getElementById('mpChoiceRow');
 const mpHostBtn = document.getElementById('mpHostBtn');
+const mpBrowseBtn = document.getElementById('mpBrowseBtn');
+const mpBrowsePanel = document.getElementById('mpBrowsePanel');
+const mpBrowseList = document.getElementById('mpBrowseList');
+const mpBrowseEmpty = document.getElementById('mpBrowseEmpty');
+const mpBrowseRefreshBtn = document.getElementById('mpBrowseRefreshBtn');
+const mpBrowseCancelBtn = document.getElementById('mpBrowseCancelBtn');
 const mpJoinBtn = document.getElementById('mpJoinBtn');
 const mpHostPanel = document.getElementById('mpHostPanel');
 const mpHostCode = document.getElementById('mpHostCode');
@@ -467,7 +570,7 @@ function replaySpeedAt(progress){
 const TACKLE_BALL_COOLDOWN = 26;
 const POSSESSION_BIAS_FRAMES = 20;
 
-const MATCH_SECONDS = 60;
+let MATCH_SECONDS = 60;
 const DUEL_SECONDS = 75;
 
 let score = 0;
@@ -477,6 +580,15 @@ let matchTimeLeft = MATCH_SECONDS;
 let lastShownSecond = -1;
 let screen = 'menu'; // 'menu' | 'playing' | 'paused' | 'result'
 let matchMode = 'attack'; // 'attack' | 'practice' | 'duel'
+let duelWins = 0, duelLosses = 0, duelDraws = 0;
+let volume = 0.8;
+let masterGain = null;
+const DIFFICULTY_PRESETS = {
+  easy:   { speedMul: 0.75, tackleProb: 0.006, shotProb: 0.14, facingErr: 0.4 },
+  normal: { speedMul: 0.92, tackleProb: 0.012, shotProb: 0.22, facingErr: 0.6 },
+  hard:   { speedMul: 1.02, tackleProb: 0.022, shotProb: 0.32, facingErr: 0.85 }
+};
+let cpuDifficulty = 'normal';
 let celebrating = false;
 let flashText = null;
 let flashTimer = 0;
@@ -493,7 +605,9 @@ let replayBuffer = [];
 let replayClip = [];
 let replayPos = 0;
 let inReplay = false;
-let celebratePhase = 'flash'; // 'replay' | 'flash'
+let celebratePhase = 'flash'; // 'burst' | 'replay' | 'flash'
+let burstTimer = 0;
+const GOAL_BURST_FRAMES = 170; // time the goal explosion gets to play out before we cut to replay
 let replayStage = null; // 'in' | 'active' | 'out'
 let replayStageTimer = 0;
 let replayCamX = 0;
@@ -527,7 +641,138 @@ const PEER_CONFIG = {
   }
 };
 
-// ---------- Multiplayer (PeerJS, host-authoritative) ----------
+// ---------- Server list (kvdb.io, keyless shared key-value store) ----------
+// One-time setup: on first ever load with the placeholder below, the game auto-creates
+// a free anonymous bucket and prints its ID to the console. Copy that ID in here and
+// redeploy — after that this bootstrap path is skipped entirely.
+const LOBBY_BUCKET_ID = 'PASTE_YOUR_BUCKET_ID_HERE';
+const LOBBY_TTL_SECONDS = 40;      // a listed game disappears this long after its last heartbeat
+const LOBBY_HEARTBEAT_MS = 15000;  // how often a hosted game refreshes its listing
+const LOBBY_POLL_MS = 4000;        // how often the browser panel refreshes the list
+const LOBBY_STALE_MS = LOBBY_TTL_SECONDS * 1000;
+
+let lobbyBucket = null;
+let lobbySetupPending = false;
+let lobbyHeartbeatTimer = null;
+let lobbyPollTimer = null;
+let lastHostedId = null;
+
+function getLobbyBucket(){
+  if (lobbyBucket) return lobbyBucket;
+  if (typeof KVdb === 'undefined') return null;
+  if (!LOBBY_BUCKET_ID || LOBBY_BUCKET_ID === 'PASTE_YOUR_BUCKET_ID_HERE') return null;
+  lobbyBucket = KVdb.bucket(LOBBY_BUCKET_ID);
+  return lobbyBucket;
+}
+
+async function bootstrapLobbyBucketIfNeeded(){
+  if (LOBBY_BUCKET_ID !== 'PASTE_YOUR_BUCKET_ID_HERE') return;
+  lobbySetupPending = true;
+  try {
+    const res = await fetch('https://kvdb.io/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'email=lobby@kickabout.local&default_ttl=' + LOBBY_TTL_SECONDS
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const id = (await res.text()).trim();
+    console.warn(
+      '[Kickabout] Server-list one-time setup: a shared lobby bucket was just created.\n' +
+      'Copy this ID into the LOBBY_BUCKET_ID constant near the top of the script, then redeploy:\n\n  ' + id + '\n'
+    );
+  } catch (e) {
+    console.error('[Kickabout] Could not auto-create a lobby bucket — Browse Games will stay unavailable until LOBBY_BUCKET_ID is set.', e);
+  }
+}
+bootstrapLobbyBucketIfNeeded();
+
+function registerLobbyEntry(id){
+  const bucket = getLobbyBucket();
+  if (!bucket) return;
+  bucket.set('lobby:' + id, JSON.stringify({ code: id, ts: Date.now() }))
+    .catch(e => console.error('Lobby registration failed', e));
+}
+
+function refreshLobbyHeartbeat(id){
+  if (lobbyHeartbeatTimer) clearInterval(lobbyHeartbeatTimer);
+  lobbyHeartbeatTimer = setInterval(() => registerLobbyEntry(id), LOBBY_HEARTBEAT_MS);
+}
+
+function deregisterLobbyEntry(){
+  if (lobbyHeartbeatTimer) { clearInterval(lobbyHeartbeatTimer); lobbyHeartbeatTimer = null; }
+  const bucket = getLobbyBucket();
+  if (bucket && lastHostedId) bucket.delete('lobby:' + lastHostedId).catch(() => {});
+  lastHostedId = null;
+}
+
+async function refreshLobbyList(){
+  const bucket = getLobbyBucket();
+  if (!bucket) {
+    mpBrowseList.innerHTML = '';
+    mpBrowseEmpty.textContent = lobbySetupPending
+      ? 'Server list needs one-time setup — check the browser console for instructions.'
+      : 'Server list unavailable right now.';
+    mpBrowseList.appendChild(mpBrowseEmpty);
+    return;
+  }
+  try {
+    const entries = await bucket.list({ prefix: 'lobby:', values: true });
+    const now = Date.now();
+    const games = entries
+      .map(([, raw]) => { try { return JSON.parse(raw); } catch (e) { return null; } })
+      .filter(g => g && g.code && (now - g.ts) < LOBBY_STALE_MS)
+      .sort((a, b) => b.ts - a.ts);
+    renderLobbyList(games);
+  } catch (e) {
+    console.error('Lobby list fetch failed', e);
+    mpBrowseList.innerHTML = '';
+    mpBrowseEmpty.textContent = 'Could not reach the server list. Try refreshing.';
+    mpBrowseList.appendChild(mpBrowseEmpty);
+  }
+}
+
+function renderLobbyList(games){
+  mpBrowseList.innerHTML = '';
+  if (!games.length) {
+    mpBrowseEmpty.textContent = 'No open games right now — host one!';
+    mpBrowseList.appendChild(mpBrowseEmpty);
+    return;
+  }
+  games.forEach(g => {
+    const ageSec = Math.max(0, Math.round((Date.now() - g.ts) / 1000));
+    const row = document.createElement('div');
+    row.className = 'mp-browse-row';
+    row.innerHTML =
+      '<div class="mp-browse-row-info">' +
+        '<div class="mp-browse-row-code">' + g.code + '</div>' +
+        '<div class="mp-browse-row-age">Open ' + ageSec + 's ago</div>' +
+      '</div>';
+    const joinBtn = document.createElement('button');
+    joinBtn.className = 'mp-browse-join-btn';
+    joinBtn.textContent = 'Join';
+    joinBtn.addEventListener('click', () => joinLobbyGame(g.code));
+    row.appendChild(joinBtn);
+    mpBrowseList.appendChild(row);
+  });
+}
+
+function joinLobbyGame(code){
+  stopLobbyPolling();
+  mpBrowsePanel.style.display = 'none';
+  mpIntroSub.style.display = 'none';
+  mpJoinPanel.style.display = 'flex';
+  mpJoinInput.value = code;
+  mpJoinConnectBtn.click();
+}
+
+function startLobbyPolling(){
+  stopLobbyPolling();
+  lobbyPollTimer = setInterval(refreshLobbyList, LOBBY_POLL_MS);
+}
+
+function stopLobbyPolling(){
+  if (lobbyPollTimer) { clearInterval(lobbyPollTimer); lobbyPollTimer = null; }
+}
 let peer = null;
 let conn = null;
 let isHost = false;
@@ -543,6 +788,8 @@ function resetMpPanels(){
   mpChoiceRow.style.display = 'flex';
   mpHostPanel.style.display = 'none';
   mpJoinPanel.style.display = 'none';
+  mpBrowsePanel.style.display = 'none';
+  stopLobbyPolling();
   mpBackRow.style.display = 'flex';
   mpIntroSub.style.display = 'block';
   mpStartBtn.style.display = 'none';
@@ -554,6 +801,7 @@ function resetMpPanels(){
 }
 
 function closeMultiplayer(){
+  deregisterLobbyEntry();
   if (conn) { try { conn.close(); } catch(e){} conn = null; }
   if (peer) { try { peer.destroy(); } catch(e){} peer = null; }
   isHost = false;
@@ -570,6 +818,16 @@ mpBackBtn.addEventListener('click', () => { closeMultiplayer(); mpOverlay.style.
 mpHostCancelBtn.addEventListener('click', () => { closeMultiplayer(); resetMpPanels(); });
 mpJoinCancelBtn.addEventListener('click', () => { closeMultiplayer(); resetMpPanels(); });
 
+mpBrowseBtn.addEventListener('click', () => {
+  mpChoiceRow.style.display = 'none';
+  mpIntroSub.style.display = 'none';
+  mpBrowsePanel.style.display = 'flex';
+  refreshLobbyList();
+  startLobbyPolling();
+});
+mpBrowseRefreshBtn.addEventListener('click', refreshLobbyList);
+mpBrowseCancelBtn.addEventListener('click', () => { stopLobbyPolling(); resetMpPanels(); });
+
 mpHostBtn.addEventListener('click', () => {
   mpChoiceRow.style.display = 'none';
   mpIntroSub.style.display = 'none';
@@ -584,9 +842,13 @@ mpHostBtn.addEventListener('click', () => {
     mpHostCode.textContent = id;
     mpHostStatus.innerHTML = '<span class="mp-dot pulse"></span>Room ready — waiting for opponent…';
     mpHostStatus.className = 'mp-status';
+    lastHostedId = id;
+    registerLobbyEntry(id);
+    refreshLobbyHeartbeat(id);
   });
   peer.on('connection', c => {
     if (conn) { c.close(); return; } // only one opponent
+    deregisterLobbyEntry(); // room's full now, stop advertising it in the list
     mpHostStatus.innerHTML = '<span class="mp-dot pulse"></span>Opponent found — finishing connection…';
     conn = c;
     conn.on('error', err => {
@@ -903,6 +1165,7 @@ function startMatch(mode){
   replayPos = 0;
   inReplay = false;
   celebratePhase = 'flash';
+  burstTimer = 0;
   replayStage = null;
   replayStageTimer = 0;
   replayCamX = 0;
@@ -956,6 +1219,12 @@ function endMatch(){
     const outcome = score > cpuScore ? 'You Win!' : (score < cpuScore ? 'You Lose' : 'Draw');
     resultScoreEl.textContent = `${score} – ${cpuScore}`;
     resultBestEl.textContent = outcome;
+    if (matchMode === 'duel') {
+      if (score > cpuScore) duelWins++;
+      else if (score < cpuScore) duelLosses++;
+      else duelDraws++;
+      updateDuelRecordUI();
+    }
   } else {
     if (score > bestScore) bestScore = score;
     resultScoreEl.textContent = String(score);
@@ -964,6 +1233,12 @@ function endMatch(){
   }
   showScreen('result');
   if (matchMode === 'multiplayer' && isHost) sendHostSnapshot();
+}
+
+function updateDuelRecordUI(){
+  if (duelWins + duelLosses + duelDraws === 0) return;
+  menuDuelRecord.style.display = 'flex';
+  menuDuelRecordText.textContent = `${duelWins}W–${duelLosses}L`;
 }
 
 function goToMenu(){
@@ -987,9 +1262,36 @@ howToBtn.addEventListener('click', () => { howToOverlay.style.display = 'flex'; 
 howToCloseBtn.addEventListener('click', () => { howToOverlay.style.display = 'none'; });
 muteBtn.addEventListener('click', toggleMute);
 
+settingsBtn.addEventListener('click', () => { settingsOverlay.style.display = 'flex'; });
+settingsCloseBtn.addEventListener('click', () => { settingsOverlay.style.display = 'none'; });
+
+volumeSlider.addEventListener('input', () => {
+  volume = clamp(parseInt(volumeSlider.value, 10) / 100, 0, 1);
+  volumeValue.textContent = volumeSlider.value + '%';
+  volumeIcon.textContent = volume === 0 ? '🔇' : (volume < 0.5 ? '🔉' : '🔊');
+  if (masterGain && !muted) masterGain.gain.value = volume;
+});
+
+difficultySeg.querySelectorAll('button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    cpuDifficulty = btn.dataset.value;
+    difficultySeg.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+  });
+});
+
+matchLengthSeg.querySelectorAll('button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    MATCH_SECONDS = parseInt(btn.dataset.value, 10);
+    matchLengthSeg.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+    const metaEl = playBtn.querySelector('.mode-card-meta');
+    if (metaEl) metaEl.textContent = `${MATCH_SECONDS} second rush`;
+  });
+});
+
 function toggleMute(){
   muted = !muted;
   muteBtn.textContent = muted ? '🔇' : '🔊';
+  if (masterGain) masterGain.gain.value = muted ? 0 : volume;
 }
 
 function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
@@ -1069,7 +1371,7 @@ function triggerShake(amount){
   shakeMag = Math.max(shakeMag, amount);
 }
 
-function spawnParticles(x, y, count, dirAngle, power){
+function spawnParticles(x, y, count, dirAngle, power, decay){
   for (let i = 0; i < count; i++) {
     const ang = dirAngle + (Math.random() - 0.5) * 1.4;
     const spd = (1 + Math.random() * 2) * (0.6 + power) * SCALE;
@@ -1078,6 +1380,7 @@ function spawnParticles(x, y, count, dirAngle, power){
       vx: Math.cos(ang) * spd,
       vy: Math.sin(ang) * spd,
       life: 1,
+      decay: decay,
       size: (1.5 + Math.random() * 2) * SCALE
     });
   }
@@ -1099,6 +1402,9 @@ function ensureAudio(){
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     audioCtx = new AC();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = muted ? 0 : volume;
+    masterGain.connect(masterGain);
   }
   if (audioCtx.state === 'suspended') audioCtx.resume();
 }
@@ -1113,7 +1419,7 @@ function playKick(power){
   osc.frequency.exponentialRampToValueAtTime(60, t + 0.12);
   gain.gain.setValueAtTime(0.22 * power + 0.08, t);
   gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
-  osc.connect(gain).connect(audioCtx.destination);
+  osc.connect(gain).connect(masterGain);
   osc.start(t);
   osc.stop(t + 0.16);
 
@@ -1125,7 +1431,7 @@ function playKick(power){
   noise.buffer = buffer;
   const noiseGain = audioCtx.createGain();
   noiseGain.gain.setValueAtTime(0.16 * power + 0.05, t);
-  noise.connect(noiseGain).connect(audioCtx.destination);
+  noise.connect(noiseGain).connect(masterGain);
   noise.start(t);
 }
 
@@ -1142,7 +1448,7 @@ function playGoal(){
     gain.gain.setValueAtTime(0.0001, start);
     gain.gain.exponentialRampToValueAtTime(0.2, start + 0.02);
     gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.5);
-    osc.connect(gain).connect(audioCtx.destination);
+    osc.connect(gain).connect(masterGain);
     osc.start(start);
     osc.stop(start + 0.55);
   });
@@ -1164,7 +1470,7 @@ function playWhoosh(){
   const gain = audioCtx.createGain();
   gain.gain.setValueAtTime(0.18, t);
   gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
-  noise.connect(filter).connect(gain).connect(audioCtx.destination);
+  noise.connect(filter).connect(gain).connect(masterGain);
   noise.start(t);
 }
 
@@ -1178,7 +1484,7 @@ function playTackleHit(){
   osc.frequency.exponentialRampToValueAtTime(40, t + 0.1);
   gain.gain.setValueAtTime(0.22, t);
   gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-  osc.connect(gain).connect(audioCtx.destination);
+  osc.connect(gain).connect(masterGain);
   osc.start(t);
   osc.stop(t + 0.13);
 }
@@ -1194,7 +1500,7 @@ function playReplaySwell(){
   const gain = audioCtx.createGain();
   gain.gain.setValueAtTime(0.0001, t);
   gain.gain.exponentialRampToValueAtTime(0.1, t + 1.1);
-  osc.connect(gain).connect(audioCtx.destination);
+  osc.connect(gain).connect(masterGain);
   osc.start(t);
   osc.stop(t + duration);
 
@@ -1211,7 +1517,7 @@ function playReplaySwell(){
   const noiseGain = audioCtx.createGain();
   noiseGain.gain.setValueAtTime(0.0001, t);
   noiseGain.gain.exponentialRampToValueAtTime(0.045, t + 0.9);
-  noise.connect(filter).connect(noiseGain).connect(audioCtx.destination);
+  noise.connect(filter).connect(noiseGain).connect(masterGain);
   noise.start(t);
   noise.stop(t + duration);
 
@@ -1245,9 +1551,117 @@ function playReplayImpact(){
   osc.frequency.exponentialRampToValueAtTime(35, t + 0.35);
   gain.gain.setValueAtTime(0.3, t);
   gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
-  osc.connect(gain).connect(audioCtx.destination);
+  osc.connect(gain).connect(masterGain);
   osc.start(t);
   osc.stop(t + 0.42);
+}
+
+let celebrationEffect = 'classic'; // 'classic' | 'confetti' | 'bomb' | 'fireworks'
+const CELEBRATION_OPTIONS = [
+  { id: 'classic', label: '⚽ Classic' },
+  { id: 'confetti', label: '🎉 Confetti' },
+  { id: 'bomb', label: '💣 Bomb' },
+  { id: 'fireworks', label: '🎆 Fireworks' }
+];
+
+function updateCelebrationBtn(){
+  const opt = CELEBRATION_OPTIONS.find(o => o.id === celebrationEffect);
+  celebrationBtn.textContent = `Celebration: ${opt.label}`;
+}
+celebrationBtn.addEventListener('click', () => {
+  const idx = CELEBRATION_OPTIONS.findIndex(o => o.id === celebrationEffect);
+  celebrationEffect = CELEBRATION_OPTIONS[(idx + 1) % CELEBRATION_OPTIONS.length].id;
+  updateCelebrationBtn();
+  // quick preview burst so you can see what you picked
+  triggerCelebrationEffect(CENTER_X, CENTER_Y);
+});
+updateCelebrationBtn();
+
+function spawnConfettiBurst(x, y){
+  const colors = ['255,90,78', '255,207,92', '155,227,138', '93,180,255', '255,255,255', '200,120,255'];
+  for (let i = 0; i < 160; i++) {
+    const ang = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 0.95;
+    const spd = (4 + Math.random() * 7.5) * SCALE;
+    particles.push({
+      x, y,
+      vx: Math.cos(ang) * spd,
+      vy: Math.sin(ang) * spd - 3 * SCALE,
+      life: 1,
+      decay: 0.0045,
+      gravity: true,
+      shape: 'rect',
+      size: (4 + Math.random() * 5) * SCALE,
+      spin: Math.random() * Math.PI * 2,
+      spinSpeed: (Math.random() - 0.5) * 0.3,
+      color: colors[Math.floor(Math.random() * colors.length)]
+    });
+  }
+}
+
+function spawnBombBurst(x, y){
+  for (let i = 0; i < 130; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const spd = (3 + Math.random() * 10) * SCALE;
+    const hot = Math.random() < 0.5;
+    particles.push({
+      x, y,
+      vx: Math.cos(ang) * spd,
+      vy: Math.sin(ang) * spd,
+      life: 1,
+      decay: 0.007 + Math.random() * 0.007,
+      drag: 0.93,
+      size: (5 + Math.random() * 8) * SCALE,
+      color: hot ? '255,207,92' : '255,90,78'
+    });
+  }
+  // dark smoke puff underneath
+  for (let i = 0; i < 40; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const spd = (0.6 + Math.random() * 2.8) * SCALE;
+    particles.push({
+      x, y,
+      vx: Math.cos(ang) * spd,
+      vy: Math.sin(ang) * spd,
+      life: 1,
+      decay: 0.0038,
+      drag: 0.96,
+      size: (8 + Math.random() * 9) * SCALE,
+      color: '40,38,34'
+    });
+  }
+  triggerShake(30 * SCALE);
+}
+
+function spawnFireworksBurst(x, y){
+  const colors = ['255,90,78', '255,207,92', '155,227,138', '93,180,255', '255,255,255'];
+  const bursts = 6;
+  for (let b = 0; b < bursts; b++) {
+    const bx = x + (Math.random() - 0.5) * 320 * SCALE;
+    const by = y - 80 * SCALE - Math.random() * 130 * SCALE;
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    for (let i = 0; i < 64; i++) {
+      const ang = (i / 64) * Math.PI * 2;
+      const spd = (3.4 + Math.random() * 3.8) * SCALE;
+      particles.push({
+        x: bx, y: by,
+        vx: Math.cos(ang) * spd,
+        vy: Math.sin(ang) * spd,
+        life: 1,
+        decay: 0.0065,
+        gravity: true,
+        drag: 0.975,
+        size: (3 + Math.random() * 2.8) * SCALE,
+        color
+      });
+    }
+  }
+}
+
+function triggerCelebrationEffect(x, y){
+  if (celebrationEffect === 'confetti') spawnConfettiBurst(x, y);
+  else if (celebrationEffect === 'bomb') spawnBombBurst(x, y);
+  else if (celebrationEffect === 'fireworks') spawnFireworksBurst(x, y);
+  else spawnParticles(x, y, 55, -Math.PI / 2, 2.2, 0.009); // classic — bigger, longer-lived spray
 }
 
 function scoreGoal(side){
@@ -1263,9 +1677,16 @@ function scoreGoal(side){
   celebrating = true;
   state.ball.vx = 0; state.ball.vy = 0;
   possessionBiasTimer = 0;
-  triggerShake(10 * SCALE);
+  triggerShake(13 * SCALE);
+  triggerCelebrationEffect(state.ball.x, state.ball.y);
   playGoal();
 
+  // let the explosion actually play out on the live pitch before cutting to replay
+  celebratePhase = 'burst';
+  burstTimer = GOAL_BURST_FRAMES;
+}
+
+function beginReplayOrFlash(){
   if (replayBuffer.length > 20 && matchMode !== 'multiplayer') {
     replayClip = replayBuffer.slice(-REPLAY_CLIP_FRAMES);
     replayPos = 0;
@@ -1308,6 +1729,7 @@ function updateReplayCamera(){
 }
 
 function updateOpponentAI(o, b, p){
+  const diff = DIFFICULTY_PRESETS[cpuDifficulty] || DIFFICULTY_PRESETS.normal;
   const targetGoalX = FIELD_L + 4 * SCALE;
   const targetGoalY = CENTER_Y;
   const distBallO = Math.hypot(b.x - o.x, b.y - o.y);
@@ -1349,7 +1771,7 @@ function updateOpponentAI(o, b, p){
     o.vx += dirx * PLAYER_ACCEL * 0.85;
     o.vy += diry * PLAYER_ACCEL * 0.85;
     const sp = Math.hypot(o.vx, o.vy);
-    const maxSp = PLAYER_MAX_SPEED * 0.92;
+    const maxSp = PLAYER_MAX_SPEED * diff.speedMul;
     if (sp > maxSp) { o.vx = o.vx / sp * maxSp; o.vy = o.vy / sp * maxSp; }
     if (sp > 0.2) o.facing = Math.atan2(o.vy, o.vx);
   }
@@ -1367,7 +1789,7 @@ function updateOpponentAI(o, b, p){
     const aimAngle = Math.atan2(targetGoalY - o.y, targetGoalX - o.x);
     const facingErr = Math.abs(normalizeAngle(o.facing - aimAngle));
     const closeToGoal = Math.hypot(o.x - targetGoalX, o.y - targetGoalY) < 260 * SCALE;
-    if (facingErr < 0.6 && closeToGoal && Math.random() < 0.22) {
+    if (facingErr < diff.facingErr && closeToGoal && Math.random() < diff.shotProb) {
       kickBall(o, 0.6 + Math.random() * 0.4);
       o.kickTimer = 45 + Math.random() * 45;
     }
@@ -1375,7 +1797,7 @@ function updateOpponentAI(o, b, p){
 
   // occasionally go for a tackle when close to the ball-carrying player
   const distOP = Math.hypot(p.x - o.x, p.y - o.y);
-  if (o.tackleCooldown <= 0 && distOP < TACKLE_RANGE * 1.3 && distBallP < CONTROL_RANGE * 1.3 && Math.random() < 0.012) {
+  if (o.tackleCooldown <= 0 && distOP < TACKLE_RANGE * 1.3 && distBallP < CONTROL_RANGE * 1.3 && Math.random() < diff.tackleProb) {
     attemptTackle(o, p);
   }
 
@@ -1387,8 +1809,10 @@ function update(){
   if (shakeMag < 0.05) shakeMag = 0;
   particles.forEach(pt => {
     pt.x += pt.vx; pt.y += pt.vy;
-    pt.vx *= 0.9; pt.vy *= 0.9;
-    pt.life -= 0.035;
+    if (pt.gravity) pt.vy += 0.22 * SCALE;
+    pt.vx *= pt.drag || 0.9; pt.vy *= pt.gravity ? 0.995 : (pt.drag || 0.9);
+    if (pt.spin !== undefined) pt.spin += pt.spinSpeed || 0;
+    pt.life -= pt.decay || 0.035;
   });
   particles = particles.filter(pt => pt.life > 0);
   tackleFX.forEach(fx => fx.life -= 0.08);
@@ -1413,6 +1837,11 @@ function update(){
   }
 
   if (celebrating) {
+    if (celebratePhase === 'burst') {
+      burstTimer--;
+      if (burstTimer <= 0) beginReplayOrFlash();
+      return;
+    }
     if (celebratePhase === 'replay') {
       if (replayStage === 'in') {
         replayStageTimer--;
@@ -1791,10 +2220,20 @@ function drawChargeMeter(){
 
 function drawParticles(){
   particles.forEach(pt => {
-    ctx.beginPath();
-    ctx.arc(pt.x, pt.y, pt.size * pt.life, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(190,230,170,${pt.life * 0.55})`;
-    ctx.fill();
+    if (pt.shape === 'rect') {
+      ctx.save();
+      ctx.translate(pt.x, pt.y);
+      ctx.rotate(pt.spin || 0);
+      ctx.fillStyle = pt.color ? `rgba(${pt.color},${pt.life})` : `rgba(190,230,170,${pt.life * 0.55})`;
+      const s = pt.size * (0.6 + pt.life * 0.4);
+      ctx.fillRect(-s, -s * 0.6, s * 2, s * 1.2);
+      ctx.restore();
+    } else {
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, pt.size * pt.life, 0, Math.PI * 2);
+      ctx.fillStyle = pt.color ? `rgba(${pt.color},${pt.life})` : `rgba(190,230,170,${pt.life * 0.55})`;
+      ctx.fill();
+    }
   });
 }
 
