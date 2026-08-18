@@ -706,7 +706,7 @@ const PEER_CONFIG = {
 // a free anonymous bucket and prints its ID to the console. Copy that ID in here and
 // redeploy — after that this bootstrap path is skipped entirely.
 // Talks to kvdb.io's plain HTTP API directly (no client library) — see https://kvdb.io/docs/api/
-const LOBBY_BUCKET_ID = 'KheTotPQVFfSJ1ETgNo3ch';
+const LOBBY_BUCKET_ID = 'PASTE_YOUR_BUCKET_ID_HERE';
 const LOBBY_TTL_SECONDS = 40;      // a listed game disappears this long after its last heartbeat
 const LOBBY_HEARTBEAT_MS = 15000;  // how often a hosted game refreshes its listing
 const LOBBY_POLL_MS = 4000;        // how often the browser panel refreshes the list
@@ -1180,7 +1180,7 @@ window.addEventListener('keydown', e => {
     if (isHost) attemptTackle(state.player, state.opponent);
     else if (conn && mpConnected) conn.send({ type: 'tackle' });
   }
-  if (e.code === 'Escape' && !(matchMode === 'multiplayer' && !isHost)) {
+  if (e.code === 'Escape' && matchMode !== 'multiplayer') {
     if (inReplay) skipReplay();
     else if (screen === 'playing') showScreen('paused');
     else if (screen === 'paused') showScreen('playing');
@@ -1227,6 +1227,8 @@ function updateTimeDisplay(){
 function startMatch(mode){
   matchMode = mode || matchMode;
   ensureAudio();
+  pauseBtn.style.display = matchMode === 'multiplayer' ? 'none' : 'flex';
+  restartBtn.style.display = matchMode === 'multiplayer' ? 'none' : 'inline-block';
   score = 0;
   cpuScore = 0;
   charging = false;
@@ -1306,7 +1308,6 @@ function endMatch(){
     menuBestEl.textContent = `Best ${bestScore}`;
   }
   showScreen('result');
-  if (matchMode === 'multiplayer' && isHost) sendHostSnapshot();
 }
 
 function updateDuelRecordUI(){
@@ -1330,8 +1331,8 @@ pauseRestartBtn.addEventListener('click', () => startMatch());
 pauseMenuBtn.addEventListener('click', goToMenu);
 playAgainBtn.addEventListener('click', () => startMatch());
 resultMenuBtn.addEventListener('click', goToMenu);
-pauseBtn.addEventListener('click', () => { if (screen === 'playing' && !(matchMode === 'multiplayer' && !isHost)) showScreen('paused'); });
-restartBtn.addEventListener('click', () => { if (!(matchMode === 'multiplayer' && !isHost)) startMatch(); });
+pauseBtn.addEventListener('click', () => { if (screen === 'playing' && matchMode !== 'multiplayer') showScreen('paused'); });
+restartBtn.addEventListener('click', () => { if (matchMode !== 'multiplayer') startMatch(); });
 howToBtn.addEventListener('click', () => { howToOverlay.style.display = 'flex'; });
 howToCloseBtn.addEventListener('click', () => { howToOverlay.style.display = 'none'; });
 muteBtn.addEventListener('click', toggleMute);
@@ -1482,6 +1483,21 @@ function ensureAudio(){
   }
   if (audioCtx.state === 'suspended') audioCtx.resume();
 }
+
+// Prime audio on the very first interaction anywhere on the page (not just when a
+// match starts or a kick is charged) — gives the context time to fully spin up
+// before any sound effect actually needs to play, which is where a first-play
+// delay tends to come from on Safari/iOS in particular.
+let audioPrimed = false;
+function primeAudioOnce(){
+  if (audioPrimed) return;
+  audioPrimed = true;
+  ensureAudio();
+  window.removeEventListener('pointerdown', primeAudioOnce);
+  window.removeEventListener('keydown', primeAudioOnce);
+}
+window.addEventListener('pointerdown', primeAudioOnce);
+window.addEventListener('keydown', primeAudioOnce);
 
 function playKick(power){
   if (muted || !audioCtx) return;
@@ -1967,6 +1983,15 @@ function update(){
     return;
   }
 
+  updateGameplayFrame();
+
+  // sent unconditionally every frame the host is in 'playing' — including all
+  // through goal celebrations/replay, so the guest actually sees goals happen
+  // instead of the game appearing to freeze for several seconds
+  if (matchMode === 'multiplayer' && isHost) sendHostSnapshot();
+}
+
+function updateGameplayFrame(){
   if (celebrating) {
     if (celebratePhase === 'burst') {
       burstTimer--;
@@ -2161,8 +2186,6 @@ function update(){
     bx: b.x, by: b.y, bspin: b.spin
   });
   if (replayBuffer.length > REPLAY_BUFFER_MAX) replayBuffer.shift();
-
-  if (matchMode === 'multiplayer' && isHost) sendHostSnapshot();
 }
 
 function drawPitch(){
