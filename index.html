@@ -36,10 +36,10 @@
     align-items:center;
     padding:14px 18px;
   }
-  .wrap{width:100%;max-width:1500px;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;}
+  .wrap{width:100%;max-width:1900px;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;}
 
   .hud{
-    width:100%;max-width:1500px;flex:0 0 auto;
+    width:100%;max-width:1900px;flex:0 0 auto;
     display:flex;justify-content:space-between;align-items:center;
     background:var(--panel);border:1px solid var(--panel-2);border-radius:14px;
     padding:10px 20px;
@@ -69,7 +69,7 @@
   .stage{position:relative;display:inline-block;max-width:100%;flex:0 1 auto;min-height:0;}
   canvas{
     display:block;border-radius:16px;
-    width:auto;height:auto;max-width:100%;max-height:calc(100vh - 190px);
+    width:auto;height:auto;max-width:100%;max-height:calc(100vh - 150px);
     box-shadow:0 20px 50px rgba(0,0,0,.55), 0 0 0 1px #0a1f13;
   }
 
@@ -235,6 +235,7 @@
   .opt-card.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);}
   .opt-card-emoji{font-size:26px;}
   .opt-card-label{font-size:11.5px;font-weight:700;text-align:center;line-height:1.25;}
+  .opt-card-unlock{font-size:9.5px;color:var(--dim);text-align:center;line-height:1.3;font-weight:500;}
 
   .swatch-grid{
     display:grid;grid-template-columns:repeat(auto-fill, minmax(76px, 1fr));
@@ -251,6 +252,21 @@
   .swatch-card:hover .swatch-circle{transform:scale(1.08);}
   .swatch-card.active .swatch-circle{border-color:var(--accent);}
   .swatch-label{font-size:10.5px;font-weight:600;color:var(--dim);}
+  .swatch-circle.swatch-glow{
+    box-shadow:0 0 4px 2px currentColor, 0 0 18px 4px currentColor, 0 6px 14px rgba(0,0,0,.4);
+    animation:swatch-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes swatch-pulse{
+    0%,100%{box-shadow:0 0 4px 1px currentColor, 0 0 14px 3px currentColor, 0 6px 14px rgba(0,0,0,.4);}
+    50%{box-shadow:0 0 8px 3px currentColor, 0 0 26px 8px currentColor, 0 6px 14px rgba(0,0,0,.4);}
+  }
+  .swatch-circle.locked-circle{
+    background:var(--panel-2)!important;display:flex;align-items:center;justify-content:center;
+    font-size:16px;box-shadow:none;opacity:.7;
+  }
+  .swatch-card.locked{cursor:default;}
+  .swatch-card.locked:hover .swatch-circle{transform:none;}
+  .swatch-unlock{font-size:9px;color:var(--dim);text-align:center;line-height:1.25;}
   .mp-dot{
     display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--dim);
     margin-right:6px;vertical-align:middle;
@@ -283,7 +299,7 @@
   </div>
 
   <div class="stage">
-    <canvas id="pitch" width="1440" height="900"></canvas>
+    <canvas id="pitch" width="1728" height="1080"></canvas>
 
     <div class="overlay screen-home" id="menuOverlay" style="display:flex;">
       <div class="home-topbar">
@@ -330,6 +346,7 @@
         <div style="display:flex;gap:8px;">
           <button class="pill-btn" id="howToBtn">How to Play</button>
           <button class="pill-btn" id="celebrationBtn">🎉 Celebration: Classic</button>
+          <button class="pill-btn" id="powerBtn">⚡ Power: Curve Shot</button>
         </div>
         <button class="home-avatar-wrap" id="avatarBtn" style="background:none;border:none;cursor:pointer;padding:0;">
           <div class="home-avatar" id="homeAvatar"></div>
@@ -355,7 +372,7 @@
     </div>
 
     <div class="overlay overlay-top" id="settingsOverlay">
-      <div class="overlay-title" style="font-size:30px;">Settings</div>
+      <div class="overlay-title" style="font-size:30px;cursor:default;" id="settingsTitle">Settings</div>
 
       <div class="settings-row">
         <div class="settings-label">Sound Volume</div>
@@ -384,6 +401,17 @@
         </div>
       </div>
 
+      <div class="settings-row" id="devPanel" style="display:none;border-top:1px dashed #223a2c;padding-top:12px;">
+        <div class="settings-label" style="color:var(--accent);">🛠 Developer Mode</div>
+        <div class="overlay-buttons" style="margin-top:0;min-width:0;width:100%;">
+          <button class="btn btn-secondary" id="devUnlockAllBtn" style="font-size:12.5px;padding:9px 14px;">Unlock All Celebrations &amp; Skins</button>
+          <button class="btn btn-secondary" id="devResetProgressBtn" style="font-size:12.5px;padding:9px 14px;">Reset Goal Progress</button>
+          <button class="btn btn-secondary" id="devInfiniteStaminaBtn" style="font-size:12.5px;padding:9px 14px;">Infinite Stamina: Off</button>
+          <button class="btn btn-secondary" id="devHitboxesBtn" style="font-size:12.5px;padding:9px 14px;">Show Hitboxes: Off</button>
+          <button class="btn btn-secondary" id="devFpsBtn" style="font-size:12.5px;padding:9px 14px;">Show FPS: Off</button>
+        </div>
+      </div>
+
       <div class="overlay-buttons">
         <button class="btn btn-primary" id="settingsCloseBtn">Done</button>
       </div>
@@ -391,10 +419,19 @@
 
     <div class="overlay overlay-top" id="celebrationOverlay">
       <div class="overlay-title" style="font-size:30px;">Goal Celebrations</div>
-      <div class="overlay-sub">Pick what plays every time you score. Selecting one previews it and saves your choice.</div>
+      <div class="overlay-sub" id="celebrationSub">Pick what plays every time you score. Selecting one previews it and saves your choice.</div>
       <div class="opt-grid" id="celebrationGrid"></div>
       <div class="overlay-buttons">
         <button class="btn btn-secondary" id="celebrationCloseBtn">Close</button>
+      </div>
+    </div>
+
+    <div class="overlay overlay-top" id="powerOverlay">
+      <div class="overlay-title" style="font-size:30px;">Powers</div>
+      <div class="overlay-sub">Pick one active power for your next match. Only works in Time Attack, Free Play, and 1v1 Duel — not in Multiplayer.</div>
+      <div class="opt-grid" id="powerGrid"></div>
+      <div class="overlay-buttons">
+        <button class="btn btn-secondary" id="powerCloseBtn">Close</button>
       </div>
     </div>
 
@@ -415,6 +452,7 @@
         <button class="btn btn-primary" id="mpBrowseBtn">Browse Games</button>
         <button class="btn btn-secondary" id="mpHostBtn">Host a Game</button>
         <button class="btn btn-secondary" id="mpJoinBtn">Join a Game</button>
+        <button class="btn btn-secondary" id="mp2ModeBtn">2v2 Online</button>
       </div>
 
       <div class="mp-panel" id="mpBrowsePanel" style="display:none;">
@@ -450,6 +488,48 @@
 
       <div class="overlay-buttons" id="mpBackRow">
         <button class="btn btn-secondary" id="mpBackBtn">Back to Menu</button>
+      </div>
+    </div>
+
+    <div class="overlay overlay-top" id="mp2Overlay">
+      <div class="overlay-title" style="font-size:30px;">2v2 Online</div>
+      <div class="overlay-sub" id="mp2IntroSub">Host a 4-player room and share the code with 3 friends, or join one — Team Red vs Team Blue.</div>
+
+      <div class="mp-choice" id="mp2ChoiceRow">
+        <button class="btn btn-primary" id="mp2HostBtn">Host a Game</button>
+        <button class="btn btn-secondary" id="mp2JoinBtn">Join a Game</button>
+      </div>
+
+      <div class="mp-panel" id="mp2HostPanel" style="display:none;">
+        <div class="overlay-sub" style="margin-top:0;">Share this code with 3 friends</div>
+        <div class="mp-code" id="mp2HostCode">…</div>
+        <div class="mp-status" id="mp2HostStatus" style="text-align:left;width:100%;"></div>
+        <div class="overlay-buttons" style="margin-top:0;">
+          <button class="btn btn-primary" id="mp2StartBtn" style="display:none;">Start Match</button>
+          <button class="btn btn-secondary" id="mp2HostCancelBtn">Cancel</button>
+        </div>
+      </div>
+
+      <div class="mp-panel" id="mp2JoinPanel" style="display:none;">
+        <div class="overlay-sub" style="margin-top:0;">Enter the host's code</div>
+        <input class="mp-input" id="mp2JoinInput" placeholder="Room code" autocomplete="off" spellcheck="false">
+        <div class="mp-status" id="mp2JoinStatus"></div>
+        <div class="overlay-buttons" style="margin-top:0;">
+          <button class="btn btn-primary" id="mp2JoinConnectBtn">Connect</button>
+          <button class="btn btn-secondary" id="mp2JoinCancelBtn">Cancel</button>
+        </div>
+      </div>
+
+      <div class="overlay-buttons" id="mp2BackRow">
+        <button class="btn btn-secondary" id="mp2BackBtn">Back</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="reconnectOverlay">
+      <div class="overlay-title" style="font-size:30px;">Connection Lost</div>
+      <div class="overlay-sub" id="reconnectSub">Trying to reconnect…</div>
+      <div class="overlay-buttons">
+        <button class="btn btn-secondary" id="reconnectGiveUpBtn">Give Up</button>
       </div>
     </div>
 
@@ -503,8 +583,13 @@ const practiceBtn = document.getElementById('practiceBtn');
 const howToBtn = document.getElementById('howToBtn');
 const celebrationBtn = document.getElementById('celebrationBtn');
 const celebrationOverlay = document.getElementById('celebrationOverlay');
+const celebrationSub = document.getElementById('celebrationSub');
 const celebrationGrid = document.getElementById('celebrationGrid');
 const celebrationCloseBtn = document.getElementById('celebrationCloseBtn');
+const powerBtn = document.getElementById('powerBtn');
+const powerOverlay = document.getElementById('powerOverlay');
+const powerGrid = document.getElementById('powerGrid');
+const powerCloseBtn = document.getElementById('powerCloseBtn');
 const avatarBtn = document.getElementById('avatarBtn');
 const homeAvatar = document.getElementById('homeAvatar');
 const colorOverlay = document.getElementById('colorOverlay');
@@ -526,6 +611,13 @@ const duelBtn = document.getElementById('duelBtn');
 const settingsBtn = document.getElementById('settingsBtn');
 const settingsOverlay = document.getElementById('settingsOverlay');
 const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+const settingsTitle = document.getElementById('settingsTitle');
+const devPanel = document.getElementById('devPanel');
+const devUnlockAllBtn = document.getElementById('devUnlockAllBtn');
+const devResetProgressBtn = document.getElementById('devResetProgressBtn');
+const devInfiniteStaminaBtn = document.getElementById('devInfiniteStaminaBtn');
+const devHitboxesBtn = document.getElementById('devHitboxesBtn');
+const devFpsBtn = document.getElementById('devFpsBtn');
 const volumeSlider = document.getElementById('volumeSlider');
 const volumeValue = document.getElementById('volumeValue');
 const volumeIcon = document.getElementById('volumeIcon');
@@ -538,6 +630,7 @@ const mpOverlay = document.getElementById('mpOverlay');
 const mpIntroSub = document.getElementById('mpIntroSub');
 const mpChoiceRow = document.getElementById('mpChoiceRow');
 const mpHostBtn = document.getElementById('mpHostBtn');
+const mp2ModeBtn = document.getElementById('mp2ModeBtn');
 const mpBrowseBtn = document.getElementById('mpBrowseBtn');
 const mpBrowsePanel = document.getElementById('mpBrowsePanel');
 const mpBrowseList = document.getElementById('mpBrowseList');
@@ -557,9 +650,29 @@ const mpJoinConnectBtn = document.getElementById('mpJoinConnectBtn');
 const mpJoinCancelBtn = document.getElementById('mpJoinCancelBtn');
 const mpBackRow = document.getElementById('mpBackRow');
 const mpBackBtn = document.getElementById('mpBackBtn');
+const mp2Overlay = document.getElementById('mp2Overlay');
+const mp2IntroSub = document.getElementById('mp2IntroSub');
+const mp2ChoiceRow = document.getElementById('mp2ChoiceRow');
+const mp2HostBtn = document.getElementById('mp2HostBtn');
+const mp2HostPanel = document.getElementById('mp2HostPanel');
+const mp2HostCode = document.getElementById('mp2HostCode');
+const mp2HostStatus = document.getElementById('mp2HostStatus');
+const mp2StartBtn = document.getElementById('mp2StartBtn');
+const mp2HostCancelBtn = document.getElementById('mp2HostCancelBtn');
+const mp2JoinBtn = document.getElementById('mp2JoinBtn');
+const mp2JoinPanel = document.getElementById('mp2JoinPanel');
+const mp2JoinInput = document.getElementById('mp2JoinInput');
+const mp2JoinStatus = document.getElementById('mp2JoinStatus');
+const mp2JoinConnectBtn = document.getElementById('mp2JoinConnectBtn');
+const mp2JoinCancelBtn = document.getElementById('mp2JoinCancelBtn');
+const mp2BackRow = document.getElementById('mp2BackRow');
+const mp2BackBtn = document.getElementById('mp2BackBtn');
 const staminaFillEl = document.getElementById('staminaFill');
 const replayOverlay = document.getElementById('replayOverlay');
 const replaySkipBtn = document.getElementById('replaySkipBtn');
+const reconnectOverlay = document.getElementById('reconnectOverlay');
+const reconnectSub = document.getElementById('reconnectSub');
+const reconnectGiveUpBtn = document.getElementById('reconnectGiveUpBtn');
 
 const W = canvas.width, H = canvas.height;
 const SCALE = W / 960; // constants below are tuned at 960x600; scale keeps feel identical at higher res
@@ -601,6 +714,9 @@ const TOUCH_FRICTION = 0.92;
 const KICK_COOLDOWN_FRAMES = 12;
 const MIN_KICK_FRAC = 0.4;
 const CHARGE_MAX_FRAMES = 40;
+const CURVE_MAX = 1.6;      // max lateral "spin" magnitude a fully-held curve input can bank
+const CURVE_STRENGTH = 0.4; // how hard that spin bends the ball's path, scaled below
+const CURVE_DECAY = 0.985;  // curve fades out as the shot travels, like real spin bleeding off
 const SPRINT_MULTIPLIER = 1.22;
 const STAMINA_MAX = 100;
 const STAMINA_DRAIN = STAMINA_MAX / (2.6 * 60); // ~2.6s of sprint to empty
@@ -621,11 +737,11 @@ const REPLAY_OUT_FRAMES = 10;
 const REPLAY_CAM_LERP = 0.09;
 
 function replaySpeedAt(progress){
-  // brisk through the buildup, easing into deep slow motion as we
-  // approach the goal-scoring moment at the end of the clip
-  const t = clamp((progress - 0.35) / 0.5, 0, 1);
+  // brisk through the buildup, easing into slow motion as we approach the
+  // goal-scoring moment — kept above a floor so it never looks frozen/stuttery
+  const t = clamp((progress - 0.4) / 0.45, 0, 1);
   const eased = t * t * (3 - 2 * t);
-  return 0.85 - eased * (0.85 - 0.15);
+  return 0.8 - eased * (0.8 - 0.32);
 }
 const TACKLE_BALL_COOLDOWN = 26;
 const POSSESSION_BIAS_FRAMES = 20;
@@ -658,6 +774,7 @@ let shakeMag = 0;
 let frameCount = 0;
 let charging = false;
 let chargePower = 0;
+let curveAmount = 0; // -1..1, built up by holding Q/R while charging — active only when the Curve Shot power is selected
 let muted = false;
 let audioCtx = null;
 let tackleFX = [];
@@ -667,7 +784,8 @@ let replayPos = 0;
 let inReplay = false;
 let celebratePhase = 'flash'; // 'burst' | 'replay' | 'flash'
 let burstTimer = 0;
-const GOAL_BURST_FRAMES = 170; // time the goal explosion gets to play out before we cut to replay
+const GOAL_BURST_FRAMES = 85; // time the goal explosion gets to play out before the flash text
+const FLASH_FRAMES = 42;      // "GOAL!" flash duration, shown between the burst and the replay cut
 let replayStage = null; // 'in' | 'active' | 'out'
 let replayStageTimer = 0;
 let replayCamX = 0;
@@ -682,8 +800,10 @@ let spaceDown = false;
 function freshState(){
   return {
     player: { x: CENTER_X - 180 * SCALE, y: CENTER_Y, vx: 0, vy: 0, facing: 0, dashAngle: 0, stamina: STAMINA_MAX, sprinting: false, tackling: false, tackleTimer: 0, tackleCooldown: 0, stumble: 0 },
-    opponent: { x: CENTER_X + 180 * SCALE, y: CENTER_Y, vx: 0, vy: 0, facing: Math.PI, dashAngle: Math.PI, kickTimer: 0, mode: 'chase', tackling: false, tackleTimer: 0, tackleCooldown: 0, stumble: 0 },
-    ball: { x: CENTER_X, y: CENTER_Y, vx: 0, vy: 0, spin: 0, cooldown: 0 }
+    teammate: { x: CENTER_X - 180 * SCALE, y: CENTER_Y - 90 * SCALE, vx: 0, vy: 0, facing: 0, dashAngle: 0, stamina: STAMINA_MAX, sprinting: false, tackling: false, tackleTimer: 0, tackleCooldown: 0, stumble: 0 },
+    opponent: { x: CENTER_X + 180 * SCALE, y: CENTER_Y, vx: 0, vy: 0, facing: Math.PI, dashAngle: Math.PI, stamina: STAMINA_MAX, sprinting: false, kickTimer: 0, mode: 'chase', tackling: false, tackleTimer: 0, tackleCooldown: 0, stumble: 0 },
+    opponent2: { x: CENTER_X + 180 * SCALE, y: CENTER_Y - 90 * SCALE, vx: 0, vy: 0, facing: Math.PI, dashAngle: Math.PI, stamina: STAMINA_MAX, sprinting: false, kickTimer: 0, mode: 'chase', tackling: false, tackleTimer: 0, tackleCooldown: 0, stumble: 0 },
+    ball: { x: CENTER_X, y: CENTER_Y, vx: 0, vy: 0, spin: 0, cooldown: 0, curve: 0 }
   };
 }
 let state = freshState();
@@ -781,10 +901,10 @@ async function refreshLobbyList(){
     const listRes = await fetch(`https://kvdb.io/${bucketId}/?prefix=lobby:`);
     if (!listRes.ok) throw new Error('list HTTP ' + listRes.status);
     const listText = await listRes.text();
-    const keys = listText.split('\n').map(k => k.trim()).filter(Boolean);
+    const lobbyKeys = listText.split('\n').map(k => k.trim()).filter(Boolean);
     const now = Date.now();
 
-    const games = (await Promise.all(keys.map(async key => {
+    const games = (await Promise.all(lobbyKeys.map(async key => {
       try {
         const valRes = await fetch(`https://kvdb.io/${bucketId}/${key}`);
         if (!valRes.ok) return null;
@@ -847,6 +967,92 @@ function startLobbyPolling(){
 function stopLobbyPolling(){
   if (lobbyPollTimer) { clearInterval(lobbyPollTimer); lobbyPollTimer = null; }
 }
+// ---------- shared reconnect handling (1v1 + 2v2) ----------
+const RECONNECT_GRACE_MS = 25000;
+const RECONNECT_RETRY_MS = 2500;
+let mpPaused = false; // freezes host physics while waiting for someone to reconnect
+let reconnectRole = null; // 'host-1v1' | 'guest-1v1' | 'host-2v2' | 'guest-2v2' | 'guest-2v2-wait'
+let reconnectDeadline = 0;
+let reconnectTimer = null;
+let reconnectLastAttempt = 0;
+let reconnectSlotLabel = 'a player';
+let lastJoinCode1v1 = null;
+let lastJoinCode2v2 = null;
+
+function showReconnectCountdown(role){
+  reconnectRole = role;
+  reconnectGiveUpBtn.textContent = 'Give Up';
+  reconnectOverlay.style.display = 'flex';
+  reconnectLastAttempt = 0;
+  if (reconnectTimer) clearInterval(reconnectTimer);
+  reconnectTimer = setInterval(tickReconnect, 400);
+  tickReconnect();
+}
+
+function showPassiveWait(text){
+  reconnectRole = 'guest-2v2-wait';
+  reconnectSub.textContent = text;
+  reconnectGiveUpBtn.textContent = 'Leave Match';
+  reconnectOverlay.style.display = 'flex';
+}
+
+function tickReconnect(){
+  if (reconnectRole === 'guest-2v2-wait') return; // driven by host messages, not a local timer
+  const msLeft = reconnectDeadline - Date.now();
+  const sLeft = Math.max(0, Math.ceil(msLeft / 1000));
+  if (reconnectRole === 'host-1v1') {
+    reconnectSub.textContent = `Waiting for your opponent to reconnect… ${sLeft}s left`;
+  } else if (reconnectRole === 'host-2v2') {
+    reconnectSub.textContent = `Waiting for ${reconnectSlotLabel} to reconnect… ${sLeft}s left`;
+  } else if (reconnectRole === 'guest-1v1' || reconnectRole === 'guest-2v2') {
+    reconnectSub.textContent = `Reconnecting to the host… ${sLeft}s left`;
+    if (Date.now() - reconnectLastAttempt > RECONNECT_RETRY_MS) {
+      reconnectLastAttempt = Date.now();
+      if (reconnectRole === 'guest-1v1') attemptGuestReconnect1v1();
+      else attemptGuestReconnect2v2();
+    }
+  }
+  if (msLeft <= 0) giveUpReconnect(true);
+}
+
+function stopReconnectCountdown(){
+  if (reconnectTimer) { clearInterval(reconnectTimer); reconnectTimer = null; }
+  reconnectOverlay.style.display = 'none';
+}
+
+function resumeAfterReconnect(){
+  const role = reconnectRole;
+  reconnectRole = null;
+  stopReconnectCountdown();
+  mpPaused = false;
+  if (role === 'host-2v2') notify2v2('resumed', '');
+}
+
+function giveUpReconnect(auto){
+  const role = reconnectRole;
+  reconnectRole = null;
+  stopReconnectCountdown();
+  mpPaused = false;
+  if (role === 'host-1v1' || role === 'guest-1v1') {
+    closeMultiplayer();
+    goToMenu();
+    mpOverlay.style.display = 'flex';
+    resetMpPanels();
+    mpIntroSub.textContent = auto ? 'Connection lost — your opponent didn\u2019t reconnect in time.' : 'You left the match.';
+    mpIntroSub.style.display = 'block';
+  } else if (role === 'host-2v2' || role === 'guest-2v2' || role === 'guest-2v2-wait') {
+    if (role === 'host-2v2') notify2v2('ended', 'A player didn\u2019t reconnect in time — the match ended.');
+    closeMultiplayer2v2();
+    goToMenu();
+    mp2Overlay.style.display = 'flex';
+    resetMp2Panels();
+    mp2IntroSub.textContent = auto ? 'Connection lost — a player didn\u2019t reconnect in time.' : 'You left the match.';
+    mp2IntroSub.style.display = 'block';
+  }
+}
+reconnectGiveUpBtn.addEventListener('click', () => giveUpReconnect(false));
+// ---------- end shared reconnect handling ----------
+
 let peer = null;
 let conn = null;
 let isHost = false;
@@ -891,6 +1097,12 @@ multiplayerBtn.addEventListener('click', openMultiplayerMenu);
 mpBackBtn.addEventListener('click', () => { closeMultiplayer(); mpOverlay.style.display = 'none'; });
 mpHostCancelBtn.addEventListener('click', () => { closeMultiplayer(); resetMpPanels(); });
 mpJoinCancelBtn.addEventListener('click', () => { closeMultiplayer(); resetMpPanels(); });
+
+mp2ModeBtn.addEventListener('click', () => {
+  mpOverlay.style.display = 'none';
+  resetMp2Panels();
+  mp2Overlay.style.display = 'flex';
+});
 
 mpBrowseBtn.addEventListener('click', () => {
   mpChoiceRow.style.display = 'none';
@@ -969,6 +1181,7 @@ mpJoinConnectBtn.addEventListener('click', () => {
   const code = mpJoinInput.value.trim();
   if (!code) return;
   isHost = false;
+  lastJoinCode1v1 = code;
   mpJoinConnectBtn.disabled = true;
   setJoinStatus('Setting up your connection…', 'pending');
 
@@ -1040,6 +1253,10 @@ function setupConnection(){
   conn.on('open', () => {
     mpConnected = true;
     mpJoinConnectBtn.disabled = false;
+    if (reconnectRole === 'host-1v1' || reconnectRole === 'guest-1v1') {
+      resumeAfterReconnect();
+      return;
+    }
     if (isHost) {
       mpHostStatus.innerHTML = '<span class="mp-dot live"></span>Opponent connected!';
       mpHostStatus.className = 'mp-status ok';
@@ -1052,14 +1269,31 @@ function setupConnection(){
   conn.on('close', () => {
     mpConnected = false;
     if (screen === 'playing' && matchMode === 'multiplayer') {
-      flashText = null;
-      goToMenu();
-      mpOverlay.style.display = 'flex';
-      resetMpPanels();
-      mpIntroSub.textContent = 'Your opponent disconnected.';
-      mpIntroSub.style.display = 'block';
+      if (isHost) startHostReconnectWait();
+      else startGuestReconnectAttempts1v1();
     }
   });
+}
+
+function startHostReconnectWait(){
+  conn = null;
+  mpPaused = true;
+  reconnectDeadline = Date.now() + RECONNECT_GRACE_MS;
+  showReconnectCountdown('host-1v1');
+}
+
+function startGuestReconnectAttempts1v1(){
+  mpPaused = true;
+  reconnectDeadline = Date.now() + RECONNECT_GRACE_MS;
+  showReconnectCountdown('guest-1v1');
+}
+
+function attemptGuestReconnect1v1(){
+  if (!lastJoinCode1v1 || !peer) return;
+  try {
+    conn = peer.connect(lastJoinCode1v1, { reliable: true });
+    setupConnection();
+  } catch(e) { /* will retry on next tick */ }
 }
 
 mpStartBtn.addEventListener('click', () => {
@@ -1127,10 +1361,10 @@ function sendHostSnapshot(){
   });
 }
 
-function applyRemoteOpponent(o){
-  let ax = remoteInput.ax, ay = remoteInput.ay;
+function applyRemoteOpponent(o, input){
+  let ax = input.ax, ay = input.ay;
   if (o.stamina === undefined) o.stamina = STAMINA_MAX;
-  const wantSprint = remoteInput.sprint && (ax !== 0 || ay !== 0);
+  const wantSprint = input.sprint && (ax !== 0 || ay !== 0);
   if (wantSprint) { if (o.sprinting || o.stamina > STAMINA_MIN_TO_START) o.sprinting = true; }
   else { o.sprinting = false; }
   if (o.sprinting) { o.stamina = Math.max(0, o.stamina - STAMINA_DRAIN); if (o.stamina <= 0) o.sprinting = false; }
@@ -1155,7 +1389,289 @@ function applyRemoteOpponent(o){
   o.y = clamp(o.y, FIELD_T + PLAYER_R, FIELD_B - PLAYER_R);
   maybeSprintDust(o);
 }
-// ---------- end multiplayer ----------
+// ---------- end 1v1 multiplayer ----------
+
+// ---------- 2v2 online multiplayer ----------
+let peer2 = null;
+let mp2IsHost = false;
+let mp2Conns = [null, null, null];      // host only: slot0=teammate, slot1=opponent, slot2=opponent2
+let mp2RemoteInputs = [
+  { ax: 0, ay: 0, sprint: false },
+  { ax: 0, ay: 0, sprint: false },
+  { ax: 0, ay: 0, sprint: false }
+];
+let mp2GuestConn = null;   // guest only
+let mp2Connected = false;  // guest only
+let mp2MySlot = -1;        // guest only: 0, 1, or 2
+
+function mp2SlotAgent(slot){
+  return slot === 0 ? state.teammate : (slot === 1 ? state.opponent : state.opponent2);
+}
+
+function resetMp2Panels(){
+  mp2ChoiceRow.style.display = 'flex';
+  mp2HostPanel.style.display = 'none';
+  mp2JoinPanel.style.display = 'none';
+  mp2BackRow.style.display = 'flex';
+  mp2IntroSub.style.display = 'block';
+  mp2StartBtn.style.display = 'none';
+  mp2JoinStatus.textContent = '';
+  mp2JoinStatus.className = 'mp-status';
+  mp2JoinInput.value = '';
+}
+
+function closeMultiplayer2v2(){
+  if (mp2GuestConn) { try { mp2GuestConn.close(); } catch(e){} mp2GuestConn = null; }
+  mp2Conns.forEach(c => { if (c) { try { c.close(); } catch(e){} } });
+  mp2Conns = [null, null, null];
+  if (peer2) { try { peer2.destroy(); } catch(e){} peer2 = null; }
+  mp2IsHost = false;
+  mp2Connected = false;
+  mp2MySlot = -1;
+}
+
+mp2BackBtn.addEventListener('click', () => { closeMultiplayer2v2(); mp2Overlay.style.display = 'none'; });
+mp2HostCancelBtn.addEventListener('click', () => { closeMultiplayer2v2(); resetMp2Panels(); });
+mp2JoinCancelBtn.addEventListener('click', () => { closeMultiplayer2v2(); resetMp2Panels(); });
+
+function updateMp2HostStatusUI(){
+  const names = ['Teammate (Red)', 'Opponent 1 (Blue)', 'Opponent 2 (Blue)'];
+  let html = '<div style="margin-bottom:4px;font-weight:700;">You — Team Red (Host)</div>';
+  mp2Conns.forEach((c, i) => {
+    const ok = !!(c && c.open);
+    html += `<div style="display:flex;align-items:center;gap:6px;"><span class="mp-dot ${ok ? 'live' : 'pulse'}"></span>${names[i]}: ${ok ? 'Connected' : 'Waiting…'}</div>`;
+  });
+  mp2HostStatus.innerHTML = html;
+  const allConnected = mp2Conns.every(c => c && c.open);
+  mp2StartBtn.style.display = allConnected ? 'inline-block' : 'none';
+}
+
+mp2HostBtn.addEventListener('click', () => {
+  mp2ChoiceRow.style.display = 'none';
+  mp2IntroSub.style.display = 'none';
+  mp2HostPanel.style.display = 'flex';
+  mp2IsHost = true;
+  mp2HostCode.textContent = '…';
+  mp2HostStatus.innerHTML = 'Setting up your room…';
+  const id = shortCode();
+  peer2 = new Peer(id, PEER_CONFIG);
+  peer2.on('open', () => {
+    mp2HostCode.textContent = id;
+    updateMp2HostStatusUI();
+  });
+  peer2.on('connection', c => {
+    const slot = mp2Conns.findIndex(s => s === null);
+    if (slot === -1) { c.close(); return; } // room full
+    mp2Conns[slot] = c;
+    c.on('open', () => {
+      c.send({ type: 'welcome', slot });
+      updateMp2HostStatusUI();
+      if (reconnectRole === 'host-2v2') resumeAfterReconnect();
+    });
+    c.on('data', d => handleMp2HostData(d, slot));
+    c.on('close', () => {
+      mp2Conns[slot] = null;
+      if (screen === 'playing' && matchMode === 'multiplayer2v2') {
+        startHost2v2ReconnectWait(slot);
+      } else {
+        updateMp2HostStatusUI();
+      }
+    });
+    c.on('error', () => { mp2Conns[slot] = null; updateMp2HostStatusUI(); });
+  });
+  peer2.on('error', err => {
+    const type = err && err.type;
+    let msg;
+    if (type === 'unavailable-id') msg = 'That room code is already taken — click Host again for a new one.';
+    else if (type === 'network') msg = 'Network error reaching the connection server. Check your internet and try again.';
+    else if (type === 'webrtc') msg = 'Your network or browser blocked the direct connection (common on some work/school wifi).';
+    else msg = 'Connection error (' + (type || 'unknown') + '). Try again.';
+    mp2HostStatus.innerHTML = msg;
+    console.error(err);
+  });
+});
+
+mp2JoinBtn.addEventListener('click', () => {
+  mp2ChoiceRow.style.display = 'none';
+  mp2IntroSub.style.display = 'none';
+  mp2JoinPanel.style.display = 'flex';
+  mp2JoinInput.focus();
+});
+
+function notify2v2(type, text){
+  mp2Conns.forEach(c => { if (c && c.open) c.send({ type, text }); });
+}
+
+function startHost2v2ReconnectWait(slot){
+  mpPaused = true;
+  reconnectDeadline = Date.now() + RECONNECT_GRACE_MS;
+  reconnectSlotLabel = ['your teammate', 'an opponent', 'an opponent'][slot] || 'a player';
+  showReconnectCountdown('host-2v2');
+  notify2v2('paused', `Waiting for ${reconnectSlotLabel} to reconnect…`);
+}
+
+function startGuest2v2ReconnectAttempts(){
+  mpPaused = true;
+  reconnectDeadline = Date.now() + RECONNECT_GRACE_MS;
+  showReconnectCountdown('guest-2v2');
+}
+
+function attemptGuestReconnect2v2(){
+  if (!lastJoinCode2v2 || !peer2) return;
+  try {
+    mp2GuestConn = peer2.connect(lastJoinCode2v2, { reliable: true });
+    setupMp2GuestConnection();
+  } catch(e) { /* will retry on next tick */ }
+}
+
+function setupMp2GuestConnection(){
+  mp2GuestConn.on('open', () => {
+    mp2Connected = true;
+    mp2JoinConnectBtn.disabled = false;
+    if (reconnectRole === 'guest-2v2') {
+      resumeAfterReconnect();
+      return;
+    }
+    mp2JoinStatus.innerHTML = '<span class="mp-dot live"></span>Connected — waiting for host to start…';
+    mp2JoinStatus.className = 'mp-status ok';
+  });
+  mp2GuestConn.on('data', handleMp2GuestData);
+  mp2GuestConn.on('close', () => {
+    mp2Connected = false;
+    if (screen === 'playing' && matchMode === 'multiplayer2v2') {
+      startGuest2v2ReconnectAttempts();
+    } else if (screen !== 'playing') {
+      mp2Overlay.style.display = 'flex';
+      resetMp2Panels();
+      mp2IntroSub.textContent = 'Disconnected from the host.';
+      mp2IntroSub.style.display = 'block';
+    }
+  });
+  mp2GuestConn.on('error', err => {
+    mp2JoinConnectBtn.disabled = false;
+    if (reconnectRole !== 'guest-2v2') {
+      mp2JoinStatus.innerHTML = 'Connection dropped: ' + (err && err.type ? err.type : 'unknown error');
+      mp2JoinStatus.className = 'mp-status err';
+    }
+  });
+}
+
+mp2JoinConnectBtn.addEventListener('click', () => {
+  const code = mp2JoinInput.value.trim();
+  if (!code) return;
+  mp2IsHost = false;
+  lastJoinCode2v2 = code;
+  mp2JoinConnectBtn.disabled = true;
+  mp2JoinStatus.innerHTML = '<span class="mp-dot pulse"></span>Connecting…';
+  mp2JoinStatus.className = 'mp-status';
+
+  peer2 = new Peer(PEER_CONFIG);
+  peer2.on('open', () => {
+    mp2GuestConn = peer2.connect(code, { reliable: true });
+    setupMp2GuestConnection();
+  });
+  peer2.on('error', err => {
+    mp2JoinConnectBtn.disabled = false;
+    const type = err && err.type;
+    let msg;
+    if (type === 'peer-unavailable') msg = 'No host found with that code. Check it\u2019s typed exactly right.';
+    else if (type === 'network') msg = 'Network error reaching the connection server. Check your internet and try again.';
+    else if (type === 'webrtc') msg = 'Your network or browser blocked the direct connection (common on some work/school wifi).';
+    else msg = 'Connection failed (' + (type || 'unknown') + '). Try again.';
+    mp2JoinStatus.innerHTML = msg;
+    mp2JoinStatus.className = 'mp-status err';
+    console.error(err);
+  });
+});
+
+mp2StartBtn.addEventListener('click', () => {
+  if (!mp2IsHost || !mp2Conns.every(c => c && c.open)) return;
+  mp2Overlay.style.display = 'none';
+  mp2Conns.forEach(c => c.send({ type: 'start' }));
+  startMatch('multiplayer2v2');
+});
+
+function handleMp2HostData(data, slot){
+  if (!data || !data.type) return;
+  if (data.type === 'move') {
+    mp2RemoteInputs[slot].ax = data.ax; mp2RemoteInputs[slot].ay = data.ay; mp2RemoteInputs[slot].sprint = data.sprint;
+  } else if (data.type === 'kick') {
+    kickBall(mp2SlotAgent(slot), data.power);
+  } else if (data.type === 'tackle') {
+    attemptTackle(mp2SlotAgent(slot), null);
+  }
+}
+
+function handleMp2GuestData(data){
+  if (!data || !data.type) return;
+  if (data.type === 'welcome') {
+    mp2MySlot = data.slot;
+  } else if (data.type === 'start') {
+    mp2Overlay.style.display = 'none';
+    startMatch('multiplayer2v2');
+  } else if (data.type === 'state') {
+    applyRemoteState2v2(data);
+  } else if (data.type === 'paused') {
+    if (reconnectRole !== 'guest-2v2') showPassiveWait(data.text || 'Waiting for a player to reconnect…');
+  } else if (data.type === 'resumed') {
+    if (reconnectRole === 'guest-2v2-wait') { reconnectRole = null; reconnectOverlay.style.display = 'none'; }
+  } else if (data.type === 'ended') {
+    closeMultiplayer2v2();
+    goToMenu();
+    mp2Overlay.style.display = 'flex';
+    resetMp2Panels();
+    mp2IntroSub.textContent = data.text || 'The match ended.';
+    mp2IntroSub.style.display = 'block';
+  }
+}
+
+function applyRemoteState2v2(d){
+  state.player.x = d.px; state.player.y = d.py; state.player.facing = d.pf; state.player.tackling = d.pt;
+  state.teammate.x = d.tx; state.teammate.y = d.ty; state.teammate.facing = d.tf; state.teammate.tackling = d.tt;
+  state.opponent.x = d.ox; state.opponent.y = d.oy; state.opponent.facing = d.of; state.opponent.tackling = d.ot;
+  state.opponent2.x = d.o2x; state.opponent2.y = d.o2y; state.opponent2.facing = d.o2f; state.opponent2.tackling = d.o2t;
+  state.ball.x = d.bx; state.ball.y = d.by; state.ball.spin = d.bspin;
+  score = d.score; cpuScore = d.cpuScore;
+  matchTimeLeft = d.time;
+  updateTimeDisplay();
+  scoreLabelEl.textContent = 'Red — Blue';
+  scoreEl.textContent = `${score} – ${cpuScore}`;
+  celebrating = d.celebrating;
+  flashText = d.flashText;
+  if (d.screen === 'result' && screen !== 'result') {
+    resultScoreEl.textContent = `${d.score} – ${d.cpuScore}`;
+    resultBestEl.textContent = d.score > d.cpuScore ? 'Red Wins!' : (d.score < d.cpuScore ? 'Blue Wins!' : 'Draw');
+    showScreen('result');
+  } else if (d.screen === 'playing' && screen !== 'playing') {
+    showScreen('playing');
+  }
+}
+
+function sendHost2v2Snapshot(){
+  const payload = {
+    type: 'state',
+    px: state.player.x, py: state.player.y, pf: state.player.facing, pt: state.player.tackling,
+    tx: state.teammate.x, ty: state.teammate.y, tf: state.teammate.facing, tt: state.teammate.tackling,
+    ox: state.opponent.x, oy: state.opponent.y, of: state.opponent.facing, ot: state.opponent.tackling,
+    o2x: state.opponent2.x, o2y: state.opponent2.y, o2f: state.opponent2.facing, o2t: state.opponent2.tackling,
+    bx: state.ball.x, by: state.ball.y, bspin: state.ball.spin,
+    score, cpuScore, time: matchTimeLeft,
+    celebrating, flashText, screen
+  };
+  mp2Conns.forEach(c => { if (c && c.open) c.send(payload); });
+}
+
+function sendGuest2v2Input(){
+  if (!mp2GuestConn || !mp2Connected) return;
+  let ax = 0, ay = 0;
+  if (keys.has('KeyW') || keys.has('ArrowUp')) ay -= 1;
+  if (keys.has('KeyS') || keys.has('ArrowDown')) ay += 1;
+  if (keys.has('KeyA') || keys.has('ArrowLeft')) ax -= 1;
+  if (keys.has('KeyD') || keys.has('ArrowRight')) ax += 1;
+  const sprint = keys.has('ShiftLeft') || keys.has('ShiftRight');
+  mp2GuestConn.send({ type: 'move', ax, ay, sprint });
+}
+// ---------- end 2v2 multiplayer ----------
 
 window.addEventListener('keydown', e => {
   if (document.activeElement && document.activeElement.tagName === 'INPUT') return; // let typing work normally in text fields
@@ -1170,6 +1686,7 @@ window.addEventListener('keydown', e => {
     } else if (screen === 'playing' && !celebrating) {
       charging = true;
       chargePower = 0;
+      curveAmount = 0;
       ensureAudio();
     }
   }
@@ -1180,7 +1697,11 @@ window.addEventListener('keydown', e => {
     if (isHost) attemptTackle(state.player, state.opponent);
     else if (conn && mpConnected) conn.send({ type: 'tackle' });
   }
-  if (e.code === 'Escape' && matchMode !== 'multiplayer') {
+  if (e.code === 'KeyE' && screen === 'playing' && !celebrating && matchMode === 'multiplayer2v2') {
+    if (mp2IsHost) attemptTackle(state.player, null);
+    else if (mp2GuestConn && mp2Connected) mp2GuestConn.send({ type: 'tackle' });
+  }
+  if (e.code === 'Escape' && matchMode !== 'multiplayer' && !(matchMode === 'multiplayer2v2' && !mp2IsHost)) {
     if (inReplay) skipReplay();
     else if (screen === 'playing') showScreen('paused');
     else if (screen === 'paused') showScreen('playing');
@@ -1197,6 +1718,10 @@ window.addEventListener('keyup', e => {
       if (matchMode === 'multiplayer' && !isHost) {
         const power = MIN_KICK_FRAC + (1 - MIN_KICK_FRAC) * chargePower;
         if (conn && mpConnected) conn.send({ type: 'kick', power });
+        chargePower = 0;
+      } else if (matchMode === 'multiplayer2v2' && !mp2IsHost) {
+        const power = MIN_KICK_FRAC + (1 - MIN_KICK_FRAC) * chargePower;
+        if (mp2GuestConn && mp2Connected) mp2GuestConn.send({ type: 'kick', power });
         chargePower = 0;
       } else {
         releasePlayerKick();
@@ -1227,8 +1752,9 @@ function updateTimeDisplay(){
 function startMatch(mode){
   matchMode = mode || matchMode;
   ensureAudio();
-  pauseBtn.style.display = matchMode === 'multiplayer' ? 'none' : 'flex';
-  restartBtn.style.display = matchMode === 'multiplayer' ? 'none' : 'inline-block';
+  const isNetworkGuest = (matchMode === 'multiplayer' && !isHost) || (matchMode === 'multiplayer2v2' && !mp2IsHost);
+  pauseBtn.style.display = (matchMode === 'multiplayer' || matchMode === 'multiplayer2v2') ? 'none' : 'flex';
+  restartBtn.style.display = (matchMode === 'multiplayer' || matchMode === 'multiplayer2v2') ? 'none' : 'inline-block';
   score = 0;
   cpuScore = 0;
   charging = false;
@@ -1269,6 +1795,12 @@ function startMatch(mode){
     updateTimeDisplay();
     scoreEl.textContent = '0 – 0';
     scoreLabelEl.textContent = 'You — Opponent';
+  } else if (matchMode === 'multiplayer2v2') {
+    matchTimeLeft = DUEL_SECONDS;
+    lastShownSecond = -1;
+    updateTimeDisplay();
+    scoreEl.textContent = '0 – 0';
+    scoreLabelEl.textContent = 'Red — Blue';
   } else {
     timeEl.textContent = '∞';
     timeEl.classList.remove('low');
@@ -1277,6 +1809,12 @@ function startMatch(mode){
   }
 
   state = freshState();
+  if (matchMode === 'multiplayer2v2') {
+    state.player.y = CENTER_Y + 90 * SCALE;
+    state.teammate.y = CENTER_Y - 90 * SCALE;
+    state.opponent.y = CENTER_Y + 90 * SCALE;
+    state.opponent2.y = CENTER_Y - 90 * SCALE;
+  }
   celebrating = false;
   flashText = null;
   kickFX = [];
@@ -1301,6 +1839,10 @@ function endMatch(){
       else duelDraws++;
       updateDuelRecordUI();
     }
+  } else if (matchMode === 'multiplayer2v2') {
+    const outcome = score > cpuScore ? 'Red Wins!' : (score < cpuScore ? 'Blue Wins!' : 'Draw');
+    resultScoreEl.textContent = `${score} – ${cpuScore}`;
+    resultBestEl.textContent = outcome;
   } else {
     if (score > bestScore) bestScore = score;
     resultScoreEl.textContent = String(score);
@@ -1308,6 +1850,7 @@ function endMatch(){
     menuBestEl.textContent = `Best ${bestScore}`;
   }
   showScreen('result');
+  if (matchMode === 'multiplayer2v2' && mp2IsHost) sendHost2v2Snapshot();
 }
 
 function updateDuelRecordUI(){
@@ -1318,6 +1861,7 @@ function updateDuelRecordUI(){
 
 function goToMenu(){
   if (matchMode === 'multiplayer') closeMultiplayer();
+  if (matchMode === 'multiplayer2v2') closeMultiplayer2v2();
   state = freshState();
   updateTimeDisplay();
   showScreen('menu');
@@ -1331,8 +1875,8 @@ pauseRestartBtn.addEventListener('click', () => startMatch());
 pauseMenuBtn.addEventListener('click', goToMenu);
 playAgainBtn.addEventListener('click', () => startMatch());
 resultMenuBtn.addEventListener('click', goToMenu);
-pauseBtn.addEventListener('click', () => { if (screen === 'playing' && matchMode !== 'multiplayer') showScreen('paused'); });
-restartBtn.addEventListener('click', () => { if (matchMode !== 'multiplayer') startMatch(); });
+pauseBtn.addEventListener('click', () => { if (screen === 'playing' && matchMode !== 'multiplayer' && matchMode !== 'multiplayer2v2') showScreen('paused'); });
+restartBtn.addEventListener('click', () => { if (matchMode !== 'multiplayer' && matchMode !== 'multiplayer2v2') startMatch(); });
 howToBtn.addEventListener('click', () => { howToOverlay.style.display = 'flex'; });
 howToCloseBtn.addEventListener('click', () => { howToOverlay.style.display = 'none'; });
 muteBtn.addEventListener('click', toggleMute);
@@ -1382,31 +1926,39 @@ function kickBall(agent, powerFrac){
   const dist = Math.hypot(b.x - agent.x, b.y - agent.y);
   if (dist > KICK_RANGE) return false;
   const power = clamp(powerFrac, 0, 1);
-  b.vx = Math.cos(agent.facing) * KICK_POWER * power + agent.vx * 0.3;
-  b.vy = Math.sin(agent.facing) * KICK_POWER * power + agent.vy * 0.3;
+  const powerKick = activePower === 'power' && agent === state.player;
+  const boost = powerKick ? 1.35 : 1;
+  b.vx = Math.cos(agent.facing) * KICK_POWER * power * boost + agent.vx * 0.3;
+  b.vy = Math.sin(agent.facing) * KICK_POWER * power * boost + agent.vy * 0.3;
   b.cooldown = KICK_COOLDOWN_FRAMES;
   kickFX.push({ x: b.x, y: b.y, r: BALL_R, life: 1 });
-  spawnParticles(b.x, b.y, Math.round(4 + power * 6), agent.facing, power);
-  triggerShake(1.5 * SCALE + power * 4 * SCALE);
-  playKick(power);
+  spawnParticles(b.x, b.y, Math.round((4 + power * 6) * (powerKick ? 1.3 : 1)), agent.facing, power * boost);
+  triggerShake((1.5 * SCALE + power * 4 * SCALE) * boost);
+  playKick(Math.min(1, power * boost));
   return true;
 }
 
 function releasePlayerKick(){
   const power = MIN_KICK_FRAC + (1 - MIN_KICK_FRAC) * chargePower;
-  kickBall(state.player, power);
+  const kicked = kickBall(state.player, power);
+  if (kicked && activePower === 'curve' && curveAmount !== 0) {
+    state.ball.curve = curveAmount * CURVE_MAX;
+  }
   chargePower = 0;
+  curveAmount = 0;
 }
 
 function attemptTackle(agent, foe){
   if (agent.tackleCooldown > 0) return;
-  if (agent.stamina !== undefined && agent.stamina < DASH_STAMINA_COST) return;
+  const infiniteStam = devInfiniteStamina && agent === state.player;
+  if (!infiniteStam && agent.stamina !== undefined && agent.stamina < DASH_STAMINA_COST) return;
   agent.tackling = true;
   agent.tackleTimer = DASH_DURATION_FRAMES;
-  agent.tackleCooldown = TACKLE_COOLDOWN_FRAMES;
+  const ironTackle = activePower === 'tackle' && agent === state.player;
+  agent.tackleCooldown = ironTackle ? Math.round(TACKLE_COOLDOWN_FRAMES * 0.6) : TACKLE_COOLDOWN_FRAMES;
   agent.dashAngle = agent.facing;
   if (agent.stamina !== undefined) {
-    agent.stamina -= DASH_STAMINA_COST;
+    agent.stamina = infiniteStam ? STAMINA_MAX : agent.stamina - DASH_STAMINA_COST;
     updateStaminaUI();
   }
   tackleFX.push({ x: agent.x, y: agent.y, angle: agent.facing, life: 1 });
@@ -1428,16 +1980,17 @@ function processTackleHit(agent, foe, b){
   if (distBall > TACKLE_RANGE) return;
   const foeHasBall = foe && Math.hypot(b.x - foe.x, b.y - foe.y) < CONTROL_RANGE * 1.3;
   if (!foe || foeHasBall) {
+    const ironTackle = activePower === 'tackle' && agent === state.player;
     b.vx = Math.cos(agent.facing) * KICK_POWER * 0.7 + agent.vx * 0.3;
     b.vy = Math.sin(agent.facing) * KICK_POWER * 0.7 + agent.vy * 0.3;
     b.cooldown = TACKLE_BALL_COOLDOWN;
     agent.tackling = false;
     agent.tackleTimer = 0;
-    if (foe) foe.stumble = STUMBLE_FRAMES;
+    if (foe) foe.stumble = ironTackle ? Math.round(STUMBLE_FRAMES * 1.6) : STUMBLE_FRAMES;
     possessionBiasAgent = agent;
     possessionBiasTimer = POSSESSION_BIAS_FRAMES;
-    triggerShake(4 * SCALE);
-    spawnParticles(b.x, b.y, 5, agent.facing, 0.5);
+    triggerShake(ironTackle ? 7 * SCALE : 4 * SCALE);
+    spawnParticles(b.x, b.y, ironTackle ? 8 : 5, agent.facing, ironTackle ? 0.75 : 0.5);
     playTackleHit();
   }
 }
@@ -1646,6 +2199,56 @@ function playReplayImpact(){
   osc.stop(t + 0.42);
 }
 
+// ---------- per-celebration sound effects ----------
+function playTone(freq, type, t0, dur, peak){
+  if (muted || !audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t0);
+  gain.gain.setValueAtTime(0.0001, t0);
+  gain.gain.exponentialRampToValueAtTime(peak, t0 + 0.015);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(gain).connect(masterGain);
+  osc.start(t0);
+  osc.stop(t0 + dur + 0.02);
+}
+
+function playNoiseBurst(t0, dur, filterType, freqStart, freqEnd, peak){
+  if (muted || !audioCtx) return;
+  const bufferSize = Math.max(1, Math.floor(audioCtx.sampleRate * dur));
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = buffer;
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = filterType;
+  filter.frequency.setValueAtTime(freqStart, t0);
+  filter.frequency.exponentialRampToValueAtTime(Math.max(20, freqEnd), t0 + dur);
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(peak, t0);
+  gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+  noise.connect(filter).connect(gain).connect(masterGain);
+  noise.start(t0);
+}
+
+function soundClassic(){ playGoal(); }
+function soundConfetti(){ if (!audioCtx) return; const t = audioCtx.currentTime; [0, 4, 7, 12].forEach((s, i) => playTone(440 * Math.pow(2, s / 12), 'triangle', t + i * 0.05, 0.18, 0.18)); }
+function soundBomb(){ if (!audioCtx) return; const t = audioCtx.currentTime; playTone(70, 'sine', t, 0.4, 0.3); playNoiseBurst(t, 0.35, 'lowpass', 1200, 80, 0.35); }
+function soundFireworks(){ if (!audioCtx) return; const t = audioCtx.currentTime; [0, 0.12, 0.24].forEach(off => playNoiseBurst(t + off, 0.18, 'bandpass', 2200, 400, 0.22)); }
+function soundSparkler(){ if (!audioCtx) return; const t = audioCtx.currentTime; for (let i = 0; i < 6; i++) playTone(1200 + Math.random() * 800, 'sine', t + i * 0.04, 0.09, 0.1); }
+function soundRainbow(){ if (!audioCtx) return; const t = audioCtx.currentTime; [0, 2, 4, 5, 7, 9, 11, 12].forEach((s, i) => playTone(261 * Math.pow(2, s / 12), 'triangle', t + i * 0.035, 0.12, 0.12)); }
+function soundSnow(){ if (!audioCtx) return; const t = audioCtx.currentTime; playTone(1400, 'sine', t, 0.6, 0.08); }
+function soundLightning(){ if (!audioCtx) return; const t = audioCtx.currentTime; playNoiseBurst(t, 0.08, 'highpass', 4000, 6000, 0.3); playTone(1800, 'square', t, 0.05, 0.15); }
+function soundHearts(){ if (!audioCtx) return; const t = audioCtx.currentTime; [0, 4, 7].forEach((s, i) => playTone(330 * Math.pow(2, s / 12), 'sine', t + i * 0.09, 0.35, 0.14)); }
+function soundStars(){ if (!audioCtx) return; const t = audioCtx.currentTime; for (let i = 0; i < 5; i++) playTone(1600 + Math.random() * 1000, 'triangle', t + Math.random() * 0.25, 0.12, 0.1); }
+function soundSmoke(){ if (!audioCtx) return; const t = audioCtx.currentTime; playNoiseBurst(t, 0.7, 'lowpass', 500, 150, 0.12); }
+function soundIce(){ if (!audioCtx) return; const t = audioCtx.currentTime; [0, 7, 12].forEach((s, i) => playTone(1400 * Math.pow(2, s / 12), 'sine', t + i * 0.05, 0.2, 0.12)); }
+function soundCash(){ if (!audioCtx) return; const t = audioCtx.currentTime; playTone(1046, 'square', t, 0.1, 0.15); playTone(1568, 'square', t + 0.09, 0.18, 0.15); }
+function soundDisco(){ if (!audioCtx) return; const t = audioCtx.currentTime; [0, 3, 7, 10, 7, 3].forEach((s, i) => playTone(220 * Math.pow(2, s / 12), 'sawtooth', t + i * 0.06, 0.1, 0.13)); }
+// ---------- end celebration sounds ----------
+
 let celebrationEffect = 'classic';
 try {
   const saved = localStorage.getItem('kickabout_celebration');
@@ -1680,63 +2283,167 @@ function spawnBurst(x, y, o){
 }
 
 function runBomb(x, y){
-  spawnBurst(x, y, { count: 45, colors: ['255,207,92', '255,90,78'], speedMin: 1.5, speedMax: 6.5, decayMin: 0.02, decayMax: 0.04, drag: 0.88, sizeMin: 2.5, sizeMax: 6.5 });
-  spawnBurst(x, y, { count: 16, colors: '40,38,34', speedMin: 0.5, speedMax: 2, decayMin: 0.01, decayMax: 0.01, drag: 0.94, sizeMin: 4, sizeMax: 8 });
-  triggerShake(20 * SCALE);
+  spawnBurst(x, y, { count: 85, colors: ['255,207,92', '255,90,78'], speedMin: 2.5, speedMax: 11, decayMin: 0.014, decayMax: 0.03, drag: 0.9, sizeMin: 3.5, sizeMax: 9 });
+  spawnBurst(x, y, { count: 30, colors: '40,38,34', speedMin: 0.6, speedMax: 3, decayMin: 0.006, decayMax: 0.008, drag: 0.95, sizeMin: 6, sizeMax: 13 });
+  spawnShockwave(x, y, true);
+  triggerShake(34 * SCALE);
 }
 
 function runFireworks(x, y){
-  for (let b = 0; b < 3; b++) {
-    const bx = x + (Math.random() - 0.5) * 220 * SCALE;
-    const by = y - 60 * SCALE - Math.random() * 90 * SCALE;
-    spawnBurst(bx, by, { count: 34, colors: RAINBOW_COLORS[Math.floor(Math.random() * RAINBOW_COLORS.length)], speedMin: 2, speedMax: 4.2, decayMin: 0.018, decayMax: 0.018, gravity: true, drag: 0.97, sizeMin: 1.8, sizeMax: 3.4 });
+  for (let b = 0; b < 5; b++) {
+    const bx = x + (Math.random() - 0.5) * 320 * SCALE;
+    const by = y - 80 * SCALE - Math.random() * 130 * SCALE;
+    spawnBurst(bx, by, { count: 55, colors: RAINBOW_COLORS[Math.floor(Math.random() * RAINBOW_COLORS.length)], speedMin: 2.5, speedMax: 6, decayMin: 0.014, decayMax: 0.014, gravity: true, drag: 0.97, sizeMin: 2.4, sizeMax: 4.6 });
+    spawnShockwave(bx, by, false);
   }
 }
 
 function runSnow(x, y){
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 90; i++) {
     particles.push({
       x: Math.random() * W, y: -10 * SCALE,
-      vx: (Math.random() - 0.5) * 0.4 * SCALE,
-      vy: (0.6 + Math.random() * 0.6) * SCALE,
-      life: 1, decay: 0.006 + Math.random() * 0.004,
-      drag: 0.995, size: (1.5 + Math.random() * 2) * SCALE,
+      vx: (Math.random() - 0.5) * 0.5 * SCALE,
+      vy: (0.7 + Math.random() * 0.8) * SCALE,
+      life: 1, decay: 0.004 + Math.random() * 0.003,
+      drag: 0.995, size: (2 + Math.random() * 3) * SCALE,
       color: '255,255,255'
     });
   }
 }
 
 function runDisco(x, y){
-  for (let b = 0; b < 5; b++) {
-    const bx = x + (Math.random() - 0.5) * 160 * SCALE;
-    const by = y + (Math.random() - 0.5) * 100 * SCALE;
-    spawnBurst(bx, by, { count: 16, colors: RAINBOW_COLORS, speedMin: 1.5, speedMax: 3.5, decayMin: 0.03, decayMax: 0.05, drag: 0.9, sizeMin: 1.5, sizeMax: 3, shape: 'rect', spin: true, spinSpeedMag: 0.6 });
+  for (let b = 0; b < 8; b++) {
+    const bx = x + (Math.random() - 0.5) * 260 * SCALE;
+    const by = y + (Math.random() - 0.5) * 170 * SCALE;
+    spawnBurst(bx, by, { count: 26, colors: RAINBOW_COLORS, speedMin: 2, speedMax: 5, decayMin: 0.022, decayMax: 0.04, drag: 0.9, sizeMin: 2, sizeMax: 4, shape: 'rect', spin: true, spinSpeedMag: 0.7 });
   }
+  spawnShockwave(x, y, false);
+}
+
+let celebrationFX = [];
+
+function spawnShockwave(x, y, big){
+  celebrationFX.push({ x, y, life: 1, maxR: (big ? 260 : 170) * SCALE, ringW: (big ? 7 : 4.5) * SCALE, color: '255,207,92' });
+}
+
+function drawCelebrationFX(){
+  celebrationFX.forEach(fx => {
+    const r = fx.maxR * (1 - Math.pow(1 - fx.life, 2));
+    ctx.beginPath();
+    ctx.arc(fx.x, fx.y, r, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(${fx.color},${fx.life * 0.65})`;
+    ctx.lineWidth = fx.ringW * fx.life;
+    ctx.stroke();
+  });
 }
 
 const CELEBRATION_LIBRARY = [
-  { id: 'classic', label: 'Classic', emoji: '⚽', run: (x, y) => spawnParticles(x, y, 55, -Math.PI / 2, 2.2, 0.009) },
-  { id: 'confetti', label: 'Confetti', emoji: '🎉', run: (x, y) => spawnBurst(x, y, { count: 60, colors: RAINBOW_COLORS, directional: true, angleBase: -Math.PI / 2, spreadRad: 2.8, speedMin: 2.5, speedMax: 6.5, vyBias: -2, decayMin: 0.01, decayMax: 0.02, gravity: true, sizeMin: 2, sizeMax: 4.5, shape: 'rect', spin: true }) },
-  { id: 'bomb', label: 'Bomb', emoji: '💣', run: runBomb },
-  { id: 'fireworks', label: 'Fireworks', emoji: '🎆', run: runFireworks },
-  { id: 'sparkler', label: 'Sparkler', emoji: '✨', run: (x, y) => spawnBurst(x, y, { count: 50, colors: ['255,207,92', '255,235,180'], speedMin: 1, speedMax: 5, decayMin: 0.035, decayMax: 0.06, drag: 0.9, sizeMin: 1, sizeMax: 2.2, shape: 'rect', spin: true, spinSpeedMag: 0.8 }) },
-  { id: 'rainbow', label: 'Rainbow', emoji: '🌈', run: (x, y) => spawnBurst(x, y, { count: 70, colors: RAINBOW_COLORS, spiral: true, spiralTurns: 3, speedMin: 2, speedMax: 4.5, decayMin: 0.015, decayMax: 0.025, drag: 0.94, sizeMin: 2, sizeMax: 3.5 }) },
-  { id: 'snow', label: 'Snow', emoji: '❄️', run: runSnow },
-  { id: 'lightning', label: 'Lightning', emoji: '⚡', run: (x, y) => { spawnBurst(x, y, { count: 40, colors: ['255,255,255', '160,220,255'], speedMin: 3, speedMax: 8, decayMin: 0.04, decayMax: 0.07, drag: 0.85, sizeMin: 1, sizeMax: 2.5 }); triggerShake(16 * SCALE); } },
-  { id: 'hearts', label: 'Hearts', emoji: '💖', run: (x, y) => spawnBurst(x, y, { count: 30, colors: ['255,120,150', '255,90,78', '255,180,200'], speedMin: 0.8, speedMax: 2.5, vyBias: -1.5, decayMin: 0.01, decayMax: 0.016, drag: 0.96, sizeMin: 2.5, sizeMax: 4.5 }) },
-  { id: 'stars', label: 'Stars', emoji: '🌟', run: (x, y) => spawnBurst(x, y, { count: 40, colors: ['255,207,92', '255,255,255'], speedMin: 1.5, speedMax: 4.5, decayMin: 0.018, decayMax: 0.03, drag: 0.93, sizeMin: 2, sizeMax: 3.5, shape: 'rect', spin: true, spinSpeedMag: 0.5 }) },
-  { id: 'smoke', label: 'Smoke', emoji: '💨', run: (x, y) => spawnBurst(x, y, { count: 20, colors: ['80,80,78', '120,118,110'], speedMin: 0.3, speedMax: 1.2, vyBias: -1, decayMin: 0.006, decayMax: 0.012, drag: 0.97, sizeMin: 4, sizeMax: 8 }) },
-  { id: 'ice', label: 'Ice Shards', emoji: '🧊', run: (x, y) => spawnBurst(x, y, { count: 40, colors: ['180,230,255', '255,255,255', '120,200,240'], speedMin: 2, speedMax: 6, decayMin: 0.02, decayMax: 0.035, gravity: true, sizeMin: 1.5, sizeMax: 3, shape: 'rect', spin: true }) },
-  { id: 'cash', label: 'Cash Rain', emoji: '💵', run: (x, y) => spawnBurst(x, y, { count: 45, colors: ['120,200,110', '90,170,90', '200,230,150'], directional: true, angleBase: -Math.PI / 2, spreadRad: 2.6, speedMin: 2, speedMax: 5, vyBias: -1.5, decayMin: 0.01, decayMax: 0.016, gravity: true, sizeMin: 2, sizeMax: 3.5, shape: 'rect', spin: true, spinSpeedMag: 0.2 }) },
-  { id: 'disco', label: 'Disco', emoji: '🪩', run: runDisco }
+  { id: 'classic', label: 'Classic', emoji: '⚽', unlockAt: 0, run: (x, y) => { spawnParticles(x, y, 110, -Math.PI / 2, 3.4, 0.006); spawnShockwave(x, y, false); }, sound: soundClassic },
+  { id: 'confetti', label: 'Confetti', emoji: '🎉', unlockAt: 0, run: (x, y) => { spawnBurst(x, y, { count: 130, colors: RAINBOW_COLORS, directional: true, angleBase: -Math.PI / 2, spreadRad: 3.4, speedMin: 3.5, speedMax: 10, vyBias: -3, decayMin: 0.006, decayMax: 0.013, gravity: true, sizeMin: 2.5, sizeMax: 6, shape: 'rect', spin: true, spinSpeedMag: 0.5 }); spawnShockwave(x, y, false); }, sound: soundConfetti },
+  { id: 'bomb', label: 'Bomb', emoji: '💣', unlockAt: 0, run: runBomb, sound: soundBomb },
+  { id: 'fireworks', label: 'Fireworks', emoji: '🎆', unlockAt: 0, run: runFireworks, sound: soundFireworks },
+  { id: 'sparkler', label: 'Sparkler', emoji: '✨', unlockAt: 3, run: (x, y) => { spawnBurst(x, y, { count: 100, colors: ['255,207,92', '255,235,180'], speedMin: 1.5, speedMax: 8, decayMin: 0.022, decayMax: 0.045, drag: 0.9, sizeMin: 1.5, sizeMax: 3.2, shape: 'rect', spin: true, spinSpeedMag: 0.9 }); spawnShockwave(x, y, false); }, sound: soundSparkler },
+  { id: 'rainbow', label: 'Rainbow', emoji: '🌈', unlockAt: 5, run: (x, y) => { spawnBurst(x, y, { count: 140, colors: RAINBOW_COLORS, spiral: true, spiralTurns: 4, speedMin: 3, speedMax: 7, decayMin: 0.01, decayMax: 0.018, drag: 0.94, sizeMin: 2.5, sizeMax: 5 }); spawnShockwave(x, y, false); }, sound: soundRainbow },
+  { id: 'snow', label: 'Snow', emoji: '❄️', unlockAt: 8, run: runSnow, sound: soundSnow },
+  { id: 'lightning', label: 'Lightning', emoji: '⚡', unlockAt: 10, run: (x, y) => { spawnBurst(x, y, { count: 80, colors: ['255,255,255', '160,220,255'], speedMin: 4, speedMax: 13, decayMin: 0.028, decayMax: 0.05, drag: 0.86, sizeMin: 1.5, sizeMax: 3.5 }); spawnShockwave(x, y, true); triggerShake(30 * SCALE); }, sound: soundLightning },
+  { id: 'hearts', label: 'Hearts', emoji: '💖', unlockAt: 12, run: (x, y) => { spawnBurst(x, y, { count: 60, colors: ['255,120,150', '255,90,78', '255,180,200'], speedMin: 1.2, speedMax: 4.5, vyBias: -2.2, decayMin: 0.007, decayMax: 0.011, drag: 0.96, sizeMin: 4, sizeMax: 7.5 }); spawnShockwave(x, y, false); }, sound: soundHearts },
+  { id: 'stars', label: 'Stars', emoji: '🌟', unlockAt: 15, run: (x, y) => { spawnBurst(x, y, { count: 80, colors: ['255,207,92', '255,255,255'], speedMin: 2.5, speedMax: 8, decayMin: 0.012, decayMax: 0.02, drag: 0.93, sizeMin: 2.5, sizeMax: 5, shape: 'rect', spin: true, spinSpeedMag: 0.5 }); spawnShockwave(x, y, false); }, sound: soundStars },
+  { id: 'smoke', label: 'Smoke', emoji: '💨', unlockAt: 18, run: (x, y) => { spawnBurst(x, y, { count: 36, colors: ['80,80,78', '120,118,110'], speedMin: 0.5, speedMax: 2.2, vyBias: -1.8, decayMin: 0.004, decayMax: 0.008, drag: 0.97, sizeMin: 6, sizeMax: 13 }); spawnShockwave(x, y, true); }, sound: soundSmoke },
+  { id: 'ice', label: 'Ice Shards', emoji: '🧊', unlockAt: 20, run: (x, y) => { spawnBurst(x, y, { count: 75, colors: ['180,230,255', '255,255,255', '120,200,240'], speedMin: 3, speedMax: 10, decayMin: 0.014, decayMax: 0.024, gravity: true, sizeMin: 2, sizeMax: 4.5, shape: 'rect', spin: true }); spawnShockwave(x, y, false); }, sound: soundIce },
+  { id: 'cash', label: 'Cash Rain', emoji: '💵', unlockAt: 25, run: (x, y) => { spawnBurst(x, y, { count: 85, colors: ['120,200,110', '90,170,90', '200,230,150'], directional: true, angleBase: -Math.PI / 2, spreadRad: 3, speedMin: 3, speedMax: 8, vyBias: -2.2, decayMin: 0.006, decayMax: 0.011, gravity: true, sizeMin: 3, sizeMax: 5.5, shape: 'rect', spin: true, spinSpeedMag: 0.2 }); spawnShockwave(x, y, false); }, sound: soundCash },
+  { id: 'disco', label: 'Disco', emoji: '🪩', unlockAt: 30, run: runDisco, sound: soundDisco }
 ];
+
+let totalGoalsScored = 0;
+try {
+  const savedGoals = localStorage.getItem('kickabout_total_goals');
+  if (savedGoals) totalGoalsScored = parseInt(savedGoals, 10) || 0;
+} catch(e) { /* localStorage unavailable */ }
+
+let devUnlockAll = false;
+try {
+  devUnlockAll = localStorage.getItem('kickabout_dev_unlock') === '1';
+} catch(e) { /* localStorage unavailable */ }
+
+function isCelebrationUnlocked(opt){
+  return devUnlockAll || totalGoalsScored >= opt.unlockAt;
+}
+
+// ---------- hidden developer panel: triple-click the Settings title ----------
+let devClickCount = 0;
+let devClickTimer = null;
+settingsTitle.addEventListener('click', () => {
+  devClickCount++;
+  if (devClickTimer) clearTimeout(devClickTimer);
+  devClickTimer = setTimeout(() => { devClickCount = 0; }, 1200);
+  if (devClickCount >= 3) {
+    devClickCount = 0;
+    devPanel.style.display = devPanel.style.display === 'none' ? 'flex' : 'none';
+  }
+});
+devUnlockAllBtn.addEventListener('click', () => {
+  devUnlockAll = !devUnlockAll;
+  try { localStorage.setItem('kickabout_dev_unlock', devUnlockAll ? '1' : '0'); } catch(e) {}
+  devUnlockAllBtn.textContent = devUnlockAll ? 'Unlock All Celebrations & Skins ✓' : 'Unlock All Celebrations & Skins';
+  updateCelebrationBtn();
+  renderCelebrationGrid();
+  renderColorGrid();
+});
+devResetProgressBtn.addEventListener('click', () => {
+  totalGoalsScored = 0;
+  try { localStorage.setItem('kickabout_total_goals', '0'); } catch(e) {}
+  renderCelebrationGrid();
+});
+
+let devInfiniteStamina = false;
+try { devInfiniteStamina = localStorage.getItem('kickabout_dev_stamina') === '1'; } catch(e) {}
+devInfiniteStaminaBtn.textContent = 'Infinite Stamina: ' + (devInfiniteStamina ? 'On ✓' : 'Off');
+devInfiniteStaminaBtn.addEventListener('click', () => {
+  devInfiniteStamina = !devInfiniteStamina;
+  try { localStorage.setItem('kickabout_dev_stamina', devInfiniteStamina ? '1' : '0'); } catch(e) {}
+  devInfiniteStaminaBtn.textContent = 'Infinite Stamina: ' + (devInfiniteStamina ? 'On ✓' : 'Off');
+});
+
+let devShowHitboxes = false;
+try { devShowHitboxes = localStorage.getItem('kickabout_dev_hitboxes') === '1'; } catch(e) {}
+devHitboxesBtn.textContent = 'Show Hitboxes: ' + (devShowHitboxes ? 'On ✓' : 'Off');
+devHitboxesBtn.addEventListener('click', () => {
+  devShowHitboxes = !devShowHitboxes;
+  try { localStorage.setItem('kickabout_dev_hitboxes', devShowHitboxes ? '1' : '0'); } catch(e) {}
+  devHitboxesBtn.textContent = 'Show Hitboxes: ' + (devShowHitboxes ? 'On ✓' : 'Off');
+});
+
+let devShowFps = false;
+try { devShowFps = localStorage.getItem('kickabout_dev_fps') === '1'; } catch(e) {}
+devFpsBtn.textContent = 'Show FPS: ' + (devShowFps ? 'On ✓' : 'Off');
+devFpsBtn.addEventListener('click', () => {
+  devShowFps = !devShowFps;
+  try { localStorage.setItem('kickabout_dev_fps', devShowFps ? '1' : '0'); } catch(e) {}
+  devFpsBtn.textContent = 'Show FPS: ' + (devShowFps ? 'On ✓' : 'Off');
+});
+if (devUnlockAll) devUnlockAllBtn.textContent = 'Unlock All Celebrations & Skins ✓';
+// ---------- end hidden developer panel ----------
+
+// safety: if a previously-saved pick is somehow locked (e.g. storage cleared oddly), fall back to Classic
+{
+  const currentOpt = CELEBRATION_LIBRARY.find(o => o.id === celebrationEffect);
+  if (!currentOpt || !isCelebrationUnlocked(currentOpt)) celebrationEffect = 'classic';
+}
+
+function registerGoalScored(){
+  totalGoalsScored += 1;
+  try { localStorage.setItem('kickabout_total_goals', String(totalGoalsScored)); } catch(e) {}
+}
 
 function triggerCelebrationEffect(x, y){
   const opt = CELEBRATION_LIBRARY.find(o => o.id === celebrationEffect) || CELEBRATION_LIBRARY[0];
   opt.run(x, y);
+  if (opt.sound) opt.sound();
 }
 
 function selectCelebration(id){
+  const opt = CELEBRATION_LIBRARY.find(o => o.id === id);
+  if (!opt || !isCelebrationUnlocked(opt)) return;
   celebrationEffect = id;
   try { localStorage.setItem('kickabout_celebration', id); } catch(e) {}
   updateCelebrationBtn();
@@ -1752,9 +2459,14 @@ function updateCelebrationBtn(){
 function renderCelebrationGrid(){
   celebrationGrid.innerHTML = '';
   CELEBRATION_LIBRARY.forEach(opt => {
+    const unlocked = isCelebrationUnlocked(opt);
     const card = document.createElement('button');
-    card.className = 'opt-card' + (opt.id === celebrationEffect ? ' active' : '');
-    card.innerHTML = `<div class="opt-card-emoji">${opt.emoji}</div><div class="opt-card-label">${opt.label}</div>`;
+    card.className = 'opt-card' + (opt.id === celebrationEffect ? ' active' : '') + (unlocked ? '' : ' locked');
+    if (unlocked) {
+      card.innerHTML = `<div class="opt-card-emoji">${opt.emoji}</div><div class="opt-card-label">${opt.label}</div>`;
+    } else {
+      card.innerHTML = `<div class="opt-card-emoji">🔒</div><div class="opt-card-label">${opt.label}</div><div class="opt-card-unlock">${opt.unlockAt} goals</div>`;
+    }
     card.addEventListener('click', () => selectCelebration(opt.id));
     celebrationGrid.appendChild(card);
   });
@@ -1762,10 +2474,63 @@ function renderCelebrationGrid(){
 
 celebrationBtn.addEventListener('click', () => {
   renderCelebrationGrid();
+  celebrationSub.textContent = `Pick what plays every time you score. You've scored ${totalGoalsScored} goal${totalGoalsScored === 1 ? '' : 's'} — more effects unlock as you keep playing.`;
   celebrationOverlay.style.display = 'flex';
 });
 celebrationCloseBtn.addEventListener('click', () => { celebrationOverlay.style.display = 'none'; });
 updateCelebrationBtn();
+
+// ---------- Powers ----------
+// One active power at a time, like a loadout pick. Only affects the human
+// player (never the CPU) and only in solo/duel modes — multiplayer physics
+// aren't synced for these, so they're disabled there to keep matches fair.
+const POWERS_LIBRARY = [
+  { id: 'curve', label: 'Curve Shot', emoji: '🌀', desc: 'Hold Q or R while charging a kick to bend its flight.' },
+  { id: 'power', label: 'Power Kick', emoji: '💥', desc: 'Every kick hits noticeably harder.' },
+  { id: 'speed', label: 'Quick Feet', emoji: '👟', desc: 'Faster acceleration and top speed.' },
+  { id: 'tackle', label: 'Iron Tackle', emoji: '🛡️', desc: 'Dashes stun longer and recover faster.' },
+  { id: 'control', label: 'Sticky Control', emoji: '🧲', desc: 'The ball clings to you — harder to knock away.' }
+];
+
+let activePower = 'curve';
+try {
+  const savedPower = localStorage.getItem('kickabout_power');
+  if (savedPower && POWERS_LIBRARY.some(p => p.id === savedPower)) activePower = savedPower;
+} catch(e) { /* localStorage unavailable — fall back to default */ }
+
+function selectPower(id){
+  const opt = POWERS_LIBRARY.find(p => p.id === id);
+  if (!opt) return;
+  activePower = id;
+  curveAmount = 0;
+  try { localStorage.setItem('kickabout_power', id); } catch(e) {}
+  updatePowerBtn();
+  renderPowerGrid();
+}
+
+function updatePowerBtn(){
+  const opt = POWERS_LIBRARY.find(p => p.id === activePower) || POWERS_LIBRARY[0];
+  powerBtn.textContent = `${opt.emoji} Power: ${opt.label}`;
+}
+
+function renderPowerGrid(){
+  powerGrid.innerHTML = '';
+  POWERS_LIBRARY.forEach(opt => {
+    const card = document.createElement('button');
+    card.className = 'opt-card' + (opt.id === activePower ? ' active' : '');
+    card.innerHTML = `<div class="opt-card-emoji">${opt.emoji}</div><div class="opt-card-label">${opt.label}</div><div class="opt-card-unlock">${opt.desc}</div>`;
+    card.addEventListener('click', () => selectPower(opt.id));
+    powerGrid.appendChild(card);
+  });
+}
+
+powerBtn.addEventListener('click', () => {
+  renderPowerGrid();
+  powerOverlay.style.display = 'flex';
+});
+powerCloseBtn.addEventListener('click', () => { powerOverlay.style.display = 'none'; });
+updatePowerBtn();
+// ---------- end Powers ----------
 
 // ---------- Character color customization ----------
 const PLAYER_COLOR_SWATCHES = [
@@ -1780,13 +2545,55 @@ const PLAYER_COLOR_SWATCHES = [
   { id: 'white', hex: '#f4f1ea', label: 'White' },
   { id: 'graphite', hex: '#4a4a4a', label: 'Graphite' },
   { id: 'cyan', hex: '#4fd8ea', label: 'Cyan' },
-  { id: 'gold', hex: '#ffcf5c', label: 'Gold' }
+  { id: 'gold', hex: '#ffcf5c', label: 'Gold' },
+  { id: 'arch', hex: '#22345c', label: 'Arch', unlockType: 'goals', unlockAt: 50 },
+  { id: 'glow-ember', hex: '#ff5a3c', label: 'Ember Glow', unlockType: 'wins', unlockAt: 10, glow: true },
+  { id: 'glow-volt', hex: '#c8ff3d', label: 'Volt Glow', unlockType: 'wins', unlockAt: 18, glow: true },
+  { id: 'glow-plasma', hex: '#b83dff', label: 'Plasma Glow', unlockType: 'wins', unlockAt: 25, glow: true },
+  { id: 'glow-frost', hex: '#3de0ff', label: 'Frost Glow', unlockType: 'wins', unlockAt: 30, glow: true }
 ];
 
-function selectPlayerColor(hex){
-  COLOR_PLAYER = hex;
-  try { localStorage.setItem('kickabout_player_color', hex); } catch(e) {}
-  homeAvatar.style.background = hex;
+function isSkinUnlocked(sw){
+  if (devUnlockAll) return true;
+  if (!sw.unlockType) return true;
+  if (sw.unlockType === 'goals') return totalGoalsScored >= sw.unlockAt;
+  if (sw.unlockType === 'wins') return duelWins >= sw.unlockAt;
+  return true;
+}
+
+let activeSkinId = 'red';
+try {
+  const savedSkinId = localStorage.getItem('kickabout_player_skin_id');
+  if (savedSkinId && PLAYER_COLOR_SWATCHES.some(s => s.id === savedSkinId)) {
+    activeSkinId = savedSkinId;
+  } else {
+    // migrate an older save that only stored a hex value
+    const savedColor = localStorage.getItem('kickabout_player_color');
+    const match = savedColor && PLAYER_COLOR_SWATCHES.find(s => s.hex.toLowerCase() === savedColor.toLowerCase());
+    if (match) activeSkinId = match.id;
+  }
+} catch(e) { /* localStorage unavailable — fall back to default */ }
+{
+  const startSw = PLAYER_COLOR_SWATCHES.find(s => s.id === activeSkinId);
+  if (startSw && isSkinUnlocked(startSw)) COLOR_PLAYER = startSw.hex;
+  else activeSkinId = 'red';
+}
+
+function isActiveSkinGlow(){
+  const sw = PLAYER_COLOR_SWATCHES.find(s => s.id === activeSkinId);
+  return !!(sw && sw.glow);
+}
+
+function selectSkin(id){
+  const sw = PLAYER_COLOR_SWATCHES.find(s => s.id === id);
+  if (!sw || !isSkinUnlocked(sw)) return;
+  activeSkinId = id;
+  COLOR_PLAYER = sw.hex;
+  try {
+    localStorage.setItem('kickabout_player_skin_id', id);
+    localStorage.setItem('kickabout_player_color', sw.hex);
+  } catch(e) {}
+  homeAvatar.style.background = sw.hex;
   renderColorGrid();
   colorOverlay.style.display = 'none';
 }
@@ -1794,10 +2601,17 @@ function selectPlayerColor(hex){
 function renderColorGrid(){
   colorGrid.innerHTML = '';
   PLAYER_COLOR_SWATCHES.forEach(sw => {
+    const unlocked = isSkinUnlocked(sw);
     const card = document.createElement('button');
-    card.className = 'swatch-card' + (sw.hex.toLowerCase() === COLOR_PLAYER.toLowerCase() ? ' active' : '');
-    card.innerHTML = `<div class="swatch-circle" style="background:${sw.hex};"></div><div class="swatch-label">${sw.label}</div>`;
-    card.addEventListener('click', () => selectPlayerColor(sw.hex));
+    card.className = 'swatch-card' + (sw.id === activeSkinId ? ' active' : '') + (unlocked ? '' : ' locked');
+    if (unlocked) {
+      const glowStyle = sw.glow ? ` swatch-glow" style="background:${sw.hex};color:${sw.hex};` : '" style="background:' + sw.hex + ';';
+      card.innerHTML = `<div class="swatch-circle${glowStyle}"></div><div class="swatch-label">${sw.label}</div>`;
+    } else {
+      const need = sw.unlockType === 'goals' ? `${sw.unlockAt} goals` : `${sw.unlockAt} wins`;
+      card.innerHTML = `<div class="swatch-circle locked-circle">🔒</div><div class="swatch-label">${sw.label}</div><div class="swatch-unlock">${need}</div>`;
+    }
+    card.addEventListener('click', () => selectSkin(sw.id));
     colorGrid.appendChild(card);
   });
 }
@@ -1813,28 +2627,52 @@ homeAvatar.style.background = COLOR_PLAYER;
 
 function scoreGoal(side){
   if (matchMode === 'duel' || matchMode === 'multiplayer') {
-    if (side === 'right') score += 1; else cpuScore += 1;
+    if (side === 'right') { score += 1; registerGoalScored(); } else cpuScore += 1;
     scoreEl.textContent = `${score} – ${cpuScore}`;
     flashText = side === 'right' ? 'YOU SCORE!' : (matchMode === 'multiplayer' ? 'OPPONENT SCORES' : 'CPU SCORES');
+  } else if (matchMode === 'multiplayer2v2') {
+    if (side === 'right') score += 1; else cpuScore += 1;
+    scoreEl.textContent = `${score} – ${cpuScore}`;
+    flashText = side === 'right' ? 'RED SCORES!' : 'BLUE SCORES!';
+    if (mp2IsHost) registerGoalScored();
   } else {
     score += 1;
+    registerGoalScored();
     scoreEl.textContent = String(score);
     flashText = 'GOAL!';
   }
   celebrating = true;
   state.ball.vx = 0; state.ball.vy = 0;
   possessionBiasTimer = 0;
-  triggerShake(13 * SCALE);
+  triggerShake(17 * SCALE);
   triggerCelebrationEffect(state.ball.x, state.ball.y);
-  playGoal();
 
   // let the explosion actually play out on the live pitch before cutting to replay
   celebratePhase = 'burst';
   burstTimer = GOAL_BURST_FRAMES;
 }
 
-function beginReplayOrFlash(){
-  if (replayBuffer.length > 20 && matchMode !== 'multiplayer') {
+function beginFlash(){
+  celebratePhase = 'flash';
+  flashTimer = FLASH_FRAMES;
+}
+
+function endCelebration(){
+  flashText = null;
+  const keepMode = matchMode;
+  state = freshState();
+  if (keepMode === 'multiplayer2v2') {
+    state.player.y = CENTER_Y + 90 * SCALE;
+    state.teammate.y = CENTER_Y - 90 * SCALE;
+    state.opponent.y = CENTER_Y + 90 * SCALE;
+    state.opponent2.y = CENTER_Y - 90 * SCALE;
+  }
+  celebrating = false;
+}
+
+function beginReplayIfPossible(){
+  flashText = null; // clean handoff — the replay (or the reset) takes over from here
+  if (replayBuffer.length > 20 && matchMode !== 'multiplayer' && matchMode !== 'multiplayer2v2') {
     replayClip = replayBuffer.slice(-REPLAY_CLIP_FRAMES);
     replayPos = 0;
     inReplay = true;
@@ -1846,8 +2684,7 @@ function beginReplayOrFlash(){
     replayOverlay.style.display = 'flex';
     activeReplaySound = playReplaySwell();
   } else {
-    celebratePhase = 'flash';
-    flashTimer = 60;
+    endCelebration();
   }
 }
 
@@ -1863,8 +2700,7 @@ function finishReplay(){
   inReplay = false;
   replayStage = null;
   replayOverlay.style.display = 'none';
-  celebratePhase = 'flash';
-  flashTimer = 45;
+  endCelebration();
 }
 
 function updateReplayCamera(){
@@ -1964,6 +2800,8 @@ function update(){
   particles = particles.filter(pt => pt.life > 0);
   tackleFX.forEach(fx => fx.life -= 0.08);
   tackleFX = tackleFX.filter(fx => fx.life > 0);
+  celebrationFX.forEach(fx => fx.life -= 0.022);
+  celebrationFX = celebrationFX.filter(fx => fx.life > 0);
 
   if (screen !== 'playing') return;
   frameCount++;
@@ -1971,7 +2809,7 @@ function update(){
   if (matchMode === 'multiplayer' && !isHost) {
     // guest: no local physics — send input to host, render whatever host last sent
     if (charging) chargePower = Math.min(1, chargePower + 1 / CHARGE_MAX_FRAMES);
-    if (conn && mpConnected) {
+    if (conn && mpConnected && !mpPaused) {
       let ax = 0, ay = 0;
       if (keys.has('KeyW') || keys.has('ArrowUp')) ay -= 1;
       if (keys.has('KeyS') || keys.has('ArrowDown')) ay += 1;
@@ -1983,19 +2821,36 @@ function update(){
     return;
   }
 
+  if (matchMode === 'multiplayer2v2' && !mp2IsHost) {
+    // guest: no local physics — send input to host, render whatever host last sent
+    if (charging) chargePower = Math.min(1, chargePower + 1 / CHARGE_MAX_FRAMES);
+    if (!mpPaused) sendGuest2v2Input();
+    return;
+  }
+
+  if (mpPaused && ((matchMode === 'multiplayer' && isHost) || (matchMode === 'multiplayer2v2' && mp2IsHost))) {
+    return; // host is frozen, waiting for a disconnected player to reconnect
+  }
+
   updateGameplayFrame();
 
   // sent unconditionally every frame the host is in 'playing' — including all
   // through goal celebrations/replay, so the guest actually sees goals happen
   // instead of the game appearing to freeze for several seconds
   if (matchMode === 'multiplayer' && isHost) sendHostSnapshot();
+  if (matchMode === 'multiplayer2v2' && mp2IsHost) sendHost2v2Snapshot();
 }
 
 function updateGameplayFrame(){
   if (celebrating) {
     if (celebratePhase === 'burst') {
       burstTimer--;
-      if (burstTimer <= 0) beginReplayOrFlash();
+      if (burstTimer <= 0) beginFlash();
+      return;
+    }
+    if (celebratePhase === 'flash') {
+      flashTimer--;
+      if (flashTimer <= 0) beginReplayIfPossible();
       return;
     }
     if (celebratePhase === 'replay') {
@@ -2015,16 +2870,10 @@ function updateGameplayFrame(){
       if (replayPos >= replayClip.length - 1) skipReplay();
       return;
     }
-    flashTimer--;
-    if (flashTimer <= 0) {
-      flashText = null;
-      state = freshState();
-      celebrating = false;
-    }
     return;
   }
 
-  if (matchMode === 'attack' || matchMode === 'duel' || matchMode === 'multiplayer') {
+  if (matchMode === 'attack' || matchMode === 'duel' || matchMode === 'multiplayer' || matchMode === 'multiplayer2v2') {
     matchTimeLeft -= 1 / 60;
     updateTimeDisplay();
     if (matchTimeLeft <= 0) {
@@ -2037,7 +2886,15 @@ function updateGameplayFrame(){
 
   const p = state.player, b = state.ball;
 
-  if (charging) chargePower = Math.min(1, chargePower + 1 / CHARGE_MAX_FRAMES);
+  if (charging) {
+    chargePower = Math.min(1, chargePower + 1 / CHARGE_MAX_FRAMES);
+    if (activePower === 'curve' && matchMode !== 'multiplayer' && matchMode !== 'multiplayer2v2') {
+      let curveDir = 0;
+      if (keys.has('KeyR')) curveDir += 1;
+      if (keys.has('KeyQ')) curveDir -= 1;
+      curveAmount = clamp(curveAmount + curveDir / CHARGE_MAX_FRAMES, -1, 1);
+    }
+  }
 
   let ax = 0, ay = 0;
   if (keys.has('KeyW') || keys.has('ArrowUp')) ay -= 1;
@@ -2051,13 +2908,15 @@ function updateGameplayFrame(){
   } else {
     p.sprinting = false;
   }
-  if (p.sprinting) {
+  if (devInfiniteStamina) {
+    p.stamina = STAMINA_MAX;
+  } else if (p.sprinting) {
     p.stamina = Math.max(0, p.stamina - STAMINA_DRAIN);
     if (p.stamina <= 0) p.sprinting = false;
   } else {
     p.stamina = Math.min(STAMINA_MAX, p.stamina + STAMINA_REGEN);
   }
-  const speedMul = p.sprinting ? SPRINT_MULTIPLIER : 1;
+  const speedMul = (p.sprinting ? SPRINT_MULTIPLIER : 1) * (activePower === 'speed' ? 1.18 : 1);
 
   if (p.tackling) {
     // committed dash — overrides normal steering for its short duration,
@@ -2088,15 +2947,32 @@ function updateGameplayFrame(){
   maybeSprintDust(p);
   updateStaminaUI();
 
-  const isDuel = matchMode === 'duel' || matchMode === 'multiplayer';
-  updateTackleTimers(p);
-  if (isDuel) updateTackleTimers(state.opponent);
-  if (matchMode === 'duel') updateOpponentAI(state.opponent, b, p);
-  else if (matchMode === 'multiplayer') applyRemoteOpponent(state.opponent);
-  processTackleHit(p, isDuel ? state.opponent : null, b);
-  if (isDuel) processTackleHit(state.opponent, p, b);
+  const is2v2 = matchMode === 'multiplayer2v2';
+  const isDuel = matchMode === 'duel' || matchMode === 'multiplayer' || is2v2;
 
-  const agents = isDuel ? [p, state.opponent] : [p];
+  if (is2v2) {
+    updateTackleTimers(p);
+    updateTackleTimers(state.teammate);
+    updateTackleTimers(state.opponent);
+    updateTackleTimers(state.opponent2);
+    applyRemoteOpponent(state.teammate, mp2RemoteInputs[0]);
+    applyRemoteOpponent(state.opponent, mp2RemoteInputs[1]);
+    applyRemoteOpponent(state.opponent2, mp2RemoteInputs[2]);
+    processTackleHit(p, null, b);
+    processTackleHit(state.teammate, null, b);
+    processTackleHit(state.opponent, null, b);
+    processTackleHit(state.opponent2, null, b);
+  } else {
+    updateTackleTimers(p);
+    if (isDuel) updateTackleTimers(state.opponent);
+    if (matchMode === 'duel') updateOpponentAI(state.opponent, b, p);
+    else if (matchMode === 'multiplayer') applyRemoteOpponent(state.opponent, remoteInput);
+    processTackleHit(p, isDuel ? state.opponent : null, b);
+    if (isDuel) processTackleHit(state.opponent, p, b);
+  }
+
+  const agents = is2v2 ? [p, state.teammate, state.opponent, state.opponent2]
+    : (isDuel ? [p, state.opponent] : [p]);
 
   if (b.cooldown > 0) b.cooldown--;
 
@@ -2108,8 +2984,9 @@ function updateGameplayFrame(){
   }
   if (!controller) {
     agents.forEach(a => {
+      const range = (activePower === 'control' && a === state.player) ? CONTROL_RANGE * 1.3 : CONTROL_RANGE;
       const d = Math.hypot(b.x - a.x, b.y - a.y);
-      if (d < CONTROL_RANGE && d < controllerDist) { controller = a; controllerDist = d; }
+      if (d < range && d < controllerDist) { controller = a; controllerDist = d; }
     });
   }
   const inTouch = !!controller && b.cooldown <= 0;
@@ -2117,10 +2994,11 @@ function updateGameplayFrame(){
   if (inTouch) {
     // gentle pull toward a point ahead of whoever's closest, not a hard lock —
     // the ball keeps its own momentum so it stays loose and pokeable
+    const stickyControl = activePower === 'control' && controller === state.player;
     const targetX = controller.x + Math.cos(controller.facing) * CARRY_DIST;
     const targetY = controller.y + Math.sin(controller.facing) * CARRY_DIST;
-    b.vx += (targetX - b.x) * STEER_STRENGTH;
-    b.vy += (targetY - b.y) * STEER_STRENGTH;
+    b.vx += (targetX - b.x) * STEER_STRENGTH * (stickyControl ? 1.8 : 1);
+    b.vy += (targetY - b.y) * STEER_STRENGTH * (stickyControl ? 1.8 : 1);
     b.vx += (controller.vx - b.vx) * VELOCITY_BLEND;
     b.vy += (controller.vy - b.vy) * VELOCITY_BLEND;
   }
@@ -2132,6 +3010,18 @@ function updateGameplayFrame(){
   b.vy *= friction;
   if (Math.hypot(b.vx, b.vy) < 0.04) { b.vx = 0; b.vy = 0; }
   b.spin += b.vx * 0.04;
+
+  if (!inTouch && b.curve && Math.abs(b.curve) > 0.01) {
+    const spd = Math.hypot(b.vx, b.vy);
+    if (spd > 0.5 * SCALE) {
+      const px = -b.vy / spd, py = b.vx / spd; // unit vector perpendicular to travel direction
+      b.vx += px * b.curve * CURVE_STRENGTH * SCALE;
+      b.vy += py * b.curve * CURVE_STRENGTH * SCALE;
+    }
+    b.curve *= CURVE_DECAY;
+  } else if (inTouch) {
+    b.curve = 0; // picked back up — any remaining bend is gone
+  }
 
   // solid-body collision: every agent is an obstacle the ball rolls around,
   // never overlaps — this is what lets you nudge it sideways with your body
@@ -2149,16 +3039,20 @@ function updateGameplayFrame(){
     }
   });
 
-  if (isDuel) {
-    const o = state.opponent;
-    const dxo = o.x - p.x, dyo = o.y - p.y;
-    const distPO = Math.hypot(dxo, dyo);
-    const minDistPO = PLAYER_R * 2;
-    if (distPO < minDistPO && distPO > 0.001) {
-      const nx = dxo / distPO, ny = dyo / distPO;
-      const overlap = (minDistPO - distPO) / 2;
-      p.x -= nx * overlap; p.y -= ny * overlap;
-      o.x += nx * overlap; o.y += ny * overlap;
+  // player-vs-player pushing collision, generalized over every pair of agents
+  // on the pitch (2 agents in Duel/1v1, 4 in 2v2)
+  for (let i = 0; i < agents.length; i++) {
+    for (let j = i + 1; j < agents.length; j++) {
+      const a1 = agents[i], a2 = agents[j];
+      const dxo = a2.x - a1.x, dyo = a2.y - a1.y;
+      const distPO = Math.hypot(dxo, dyo);
+      const minDistPO = PLAYER_R * 2;
+      if (distPO < minDistPO && distPO > 0.001) {
+        const nx = dxo / distPO, ny = dyo / distPO;
+        const overlap = (minDistPO - distPO) / 2;
+        a1.x -= nx * overlap; a1.y -= ny * overlap;
+        a2.x += nx * overlap; a2.y += ny * overlap;
+      }
     }
   }
 
@@ -2180,9 +3074,9 @@ function updateGameplayFrame(){
 
   replayBuffer.push({
     px: p.x, py: p.y, pf: p.facing,
-    ox: isDuel ? state.opponent.x : null,
-    oy: isDuel ? state.opponent.y : null,
-    of: isDuel ? state.opponent.facing : null,
+    ox: (isDuel && !is2v2) ? state.opponent.x : null,
+    oy: (isDuel && !is2v2) ? state.opponent.y : null,
+    of: (isDuel && !is2v2) ? state.opponent.facing : null,
     bx: b.x, by: b.y, bspin: b.spin
   });
   if (replayBuffer.length > REPLAY_BUFFER_MAX) replayBuffer.shift();
@@ -2299,6 +3193,13 @@ function shadeColor(hex, percent){
   return `rgb(${r},${g},${b})`;
 }
 
+function hexToRgbTriplet(hex){
+  hex = String(hex).replace('#', '');
+  if (hex.length !== 6) return '255,255,255';
+  const num = parseInt(hex, 16);
+  return `${(num >> 16) & 0xff},${(num >> 8) & 0xff},${num & 0xff}`;
+}
+
 function drawShadow(x, y, r){
   const g = ctx.createRadialGradient(x, y + r * 0.65, 0, x, y + r * 0.65, r * 0.95);
   g.addColorStop(0, 'rgba(10,30,15,.38)');
@@ -2309,8 +3210,21 @@ function drawShadow(x, y, r){
   ctx.fill();
 }
 
-function drawAgent(a, color, sprinting, tackling){
+function drawAgent(a, color, sprinting, tackling, glow){
   drawShadow(a.x, a.y, PLAYER_R);
+  if (glow) {
+    const rgb = hexToRgbTriplet(color);
+    const pulse = 0.5 + 0.5 * Math.sin(frameCount * 0.12);
+    ctx.save();
+    ctx.shadowColor = `rgba(${rgb},.9)`;
+    ctx.shadowBlur = (14 + pulse * 10) * SCALE;
+    ctx.beginPath();
+    ctx.arc(a.x, a.y, PLAYER_R + 2 * SCALE, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(${rgb},${(0.5 + pulse * 0.4).toFixed(2)})`;
+    ctx.lineWidth = (2 + pulse * 2) * SCALE;
+    ctx.stroke();
+    ctx.restore();
+  }
   if (sprinting) {
     ctx.beginPath();
     ctx.arc(a.x, a.y, PLAYER_R + 5 * SCALE, 0, Math.PI * 2);
@@ -2370,6 +3284,43 @@ function drawChargeMeter(){
   ctx.lineCap = 'round';
   ctx.stroke();
   ctx.lineCap = 'butt';
+
+  if (activePower === 'curve' && matchMode !== 'multiplayer' && matchMode !== 'multiplayer2v2') {
+    const cr = r + 7 * SCALE;
+    // faint guide ring so players know a curve input is available
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, cr, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(178,103,255,.22)';
+    ctx.lineWidth = 2 * SCALE;
+    ctx.stroke();
+
+    if (Math.abs(curveAmount) > 0.01) {
+      const start = -Math.PI / 2;
+      const sweep = curveAmount * Math.PI * 0.85;
+      ctx.beginPath();
+      if (sweep >= 0) ctx.arc(p.x, p.y, cr, start, start + sweep);
+      else ctx.arc(p.x, p.y, cr, start + sweep, start);
+      ctx.strokeStyle = '#b267ff';
+      ctx.lineWidth = 3 * SCALE;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+
+      ctx.save();
+      ctx.font = `700 ${10 * SCALE}px 'Space Grotesk', sans-serif`;
+      ctx.fillStyle = '#b267ff';
+      ctx.textAlign = 'center';
+      ctx.fillText(curveAmount > 0 ? 'CURVE ►' : '◄ CURVE', p.x, p.y - cr - 6 * SCALE);
+      ctx.restore();
+    } else {
+      ctx.save();
+      ctx.font = `600 ${9 * SCALE}px 'Space Grotesk', sans-serif`;
+      ctx.fillStyle = 'rgba(178,103,255,.6)';
+      ctx.textAlign = 'center';
+      ctx.fillText('Q/R to curve', p.x, p.y - cr - 6 * SCALE);
+      ctx.restore();
+    }
+  }
 }
 
 function drawParticles(){
@@ -2470,12 +3421,12 @@ function drawKickFX(){
 function drawFlash(){
   if (!flashText) return;
   ctx.save();
-  ctx.globalAlpha = Math.min(1, flashTimer / 20);
+  ctx.globalAlpha = Math.max(0, Math.min(1, flashTimer / 20));
   ctx.textAlign = 'center';
-  ctx.font = `400 ${64 * SCALE}px 'Anton', sans-serif`;
+  ctx.font = `400 ${86 * SCALE}px 'Anton', sans-serif`;
   ctx.fillStyle = COLOR_ACCENT;
-  ctx.shadowColor = 'rgba(255,207,92,.6)';
-  ctx.shadowBlur = 30 * SCALE;
+  ctx.shadowColor = 'rgba(255,207,92,.75)';
+  ctx.shadowBlur = 46 * SCALE;
   ctx.fillText(flashText, W / 2, H / 2);
   ctx.restore();
 }
@@ -2489,11 +3440,40 @@ function drawBlackOverlay(alpha){
 function drawLiveScene(){
   drawPitch();
   drawBall();
-  drawAgent(state.player, COLOR_PLAYER, state.player.sprinting, state.player.tackling);
+  drawAgent(state.player, COLOR_PLAYER, state.player.sprinting, state.player.tackling, isActiveSkinGlow());
   if (matchMode === 'duel' || matchMode === 'multiplayer') drawAgent(state.opponent, COLOR_OPP, false, state.opponent.tackling);
+  if (matchMode === 'multiplayer2v2') {
+    drawAgent(state.teammate, COLOR_PLAYER, state.teammate.sprinting, state.teammate.tackling);
+    drawAgent(state.opponent, COLOR_OPP, state.opponent.sprinting, state.opponent.tackling);
+    drawAgent(state.opponent2, COLOR_OPP, state.opponent2.sprinting, state.opponent2.tackling);
+  }
   drawParticles();
+  drawCelebrationFX();
   drawTackleFX();
   drawKickFX();
+  if (devShowHitboxes) drawDebugHitboxes();
+}
+
+function drawDebugHitboxes(){
+  const agentsOnPitch = [state.player];
+  if (matchMode === 'duel' || matchMode === 'multiplayer') agentsOnPitch.push(state.opponent);
+  if (matchMode === 'multiplayer2v2') agentsOnPitch.push(state.teammate, state.opponent, state.opponent2);
+
+  ctx.save();
+  ctx.lineWidth = 1 * SCALE;
+  agentsOnPitch.forEach(a => {
+    ctx.strokeStyle = 'rgba(255,255,255,.9)';
+    ctx.beginPath(); ctx.arc(a.x, a.y, PLAYER_R, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(93,180,255,.6)';
+    ctx.beginPath(); ctx.arc(a.x, a.y, CONTROL_RANGE, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,207,92,.6)';
+    ctx.beginPath(); ctx.arc(a.x, a.y, KICK_RANGE, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,90,78,.6)';
+    ctx.beginPath(); ctx.arc(a.x, a.y, TACKLE_RANGE, 0, Math.PI * 2); ctx.stroke();
+  });
+  ctx.strokeStyle = 'rgba(155,227,138,.9)';
+  ctx.beginPath(); ctx.arc(state.ball.x, state.ball.y, BALL_R, 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
 }
 
 function renderReplayFrame(){
@@ -2502,7 +3482,7 @@ function renderReplayFrame(){
   if (!snap) return;
 
   const progress = replayClip.length > 1 ? replayPos / (replayClip.length - 1) : 1;
-  const zoom = 1.28 + progress * 0.18; // slow push-in toward the goal-scoring moment
+  const zoom = 1.05 + progress * 0.15; // gentle push-in toward the goal-scoring moment
 
   ctx.save();
   ctx.translate(W / 2, H / 2);
@@ -2511,7 +3491,7 @@ function renderReplayFrame(){
 
   drawPitch();
   drawBallAt(snap.bx, snap.by, snap.bspin);
-  drawAgent({ x: snap.px, y: snap.py, facing: snap.pf }, COLOR_PLAYER, false, false);
+  drawAgent({ x: snap.px, y: snap.py, facing: snap.pf }, COLOR_PLAYER, false, false, isActiveSkinGlow());
   if (snap.ox !== null && snap.ox !== undefined) {
     drawAgent({ x: snap.ox, y: snap.oy, facing: snap.of }, COLOR_OPP, false, false);
   }
@@ -2573,20 +3553,48 @@ function render(){
     else renderReplayFrame();
   } else {
     drawLiveScene();
-    if (!(matchMode === 'multiplayer' && !isHost)) drawChargeMeter();
+    const isNetworkGuest = (matchMode === 'multiplayer' && !isHost) || (matchMode === 'multiplayer2v2' && !mp2IsHost);
+    if (!isNetworkGuest) drawChargeMeter();
   }
   ctx.restore();
   drawFlash();
+  if (devShowFps) drawFpsCounter();
 }
 
-function loop(){
+function drawFpsCounter(){
+  ctx.save();
+  ctx.font = `700 ${13 * SCALE}px 'Space Grotesk', sans-serif`;
+  ctx.textAlign = 'left';
+  const label = fpsDisplay + ' FPS';
+  const pad = 6 * SCALE;
+  const w = ctx.measureText(label).width + pad * 2;
+  const h = 18 * SCALE;
+  const x = 10 * SCALE, y = 10 * SCALE;
+  ctx.fillStyle = 'rgba(0,0,0,.55)';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = fpsDisplay >= 50 ? '#9be38a' : (fpsDisplay >= 30 ? '#ffcf5c' : '#ff5a4e');
+  ctx.fillText(label, x + pad, y + h - pad + 1 * SCALE);
+  ctx.restore();
+}
+
+let fpsLastTime = 0;
+let fpsFrameCount = 0;
+let fpsDisplay = 0;
+function loop(timestamp){
+  if (!fpsLastTime) fpsLastTime = timestamp;
+  fpsFrameCount++;
+  if (timestamp - fpsLastTime >= 500) {
+    fpsDisplay = Math.round((fpsFrameCount * 1000) / (timestamp - fpsLastTime));
+    fpsFrameCount = 0;
+    fpsLastTime = timestamp;
+  }
   update();
   render();
   requestAnimationFrame(loop);
 }
 updateTimeDisplay();
 showScreen('menu');
-loop();
+requestAnimationFrame(loop);
 </script>
 </body>
 </html>
