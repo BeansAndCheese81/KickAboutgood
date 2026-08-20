@@ -291,6 +291,10 @@
       <div class="hud-label">Stamina</div>
       <div class="stamina-track"><div class="stamina-fill" id="staminaFill"></div></div>
     </div>
+    <div class="hud-block" style="min-width:110px;" id="abilityHudBlock">
+      <div class="hud-label">Ability <span id="abilityHudLabel" style="text-transform:none;opacity:.7;"></span></div>
+      <div class="stamina-track"><div class="stamina-fill" id="abilityFill" style="background:#5dc4ff;"></div></div>
+    </div>
     <div class="hud-actions">
       <button class="icon-btn" id="muteBtn" title="Mute">🔊</button>
       <button class="icon-btn" id="pauseBtn" title="Pause">❚❚</button>
@@ -347,6 +351,7 @@
           <button class="pill-btn" id="howToBtn">How to Play</button>
           <button class="pill-btn" id="celebrationBtn">🎉 Celebration: Classic</button>
           <button class="pill-btn" id="powerBtn">⚡ Power: Curve Shot</button>
+          <button class="pill-btn" id="abilityBtn">🔮 Ability: Blink Dash</button>
         </div>
         <button class="home-avatar-wrap" id="avatarBtn" style="background:none;border:none;cursor:pointer;padding:0;">
           <div class="home-avatar" id="homeAvatar"></div>
@@ -362,6 +367,8 @@
         <div class="howto-row"><span class="keys"><kbd>Space</kbd></span> Hold to charge your kick, release to strike — longer hold, harder shot</div>
         <div class="howto-row"><span class="keys"><kbd>Shift</kbd></span> Hold to sprint — burns stamina, so use it in bursts</div>
         <div class="howto-row"><span class="keys"><kbd>E</kbd></span> Dash — a committed burst forward that costs a chunk of stamina and can knock the ball loose in 1v1 Duel</div>
+        <div class="howto-row"><span class="keys"><kbd>Q</kbd><kbd>R</kbd></span> Hold while charging a kick to bend its flight — only if Curve Shot is your selected Power</div>
+        <div class="howto-row"><span class="keys"><kbd>F</kbd></span> Trigger your selected Ability — has its own cooldown, shown in the HUD</div>
         <div class="howto-row"><span class="keys"><kbd>Esc</kbd></span> Pause the match</div>
         <div class="howto-row"><span class="keys"><kbd>M</kbd></span> Mute/unmute sound</div>
         <div class="howto-row"><span class="keys">⚽</span> The ball keeps its own momentum near you — stay close to keep control</div>
@@ -432,6 +439,15 @@
       <div class="opt-grid" id="powerGrid"></div>
       <div class="overlay-buttons">
         <button class="btn btn-secondary" id="powerCloseBtn">Close</button>
+      </div>
+    </div>
+
+    <div class="overlay overlay-top" id="abilityOverlay">
+      <div class="overlay-title" style="font-size:30px;">Abilities</div>
+      <div class="overlay-sub">Pick one ability to trigger with <kbd>F</kbd> during your next match — it has its own cooldown, separate from your Power. Only works in Time Attack, Free Play, and 1v1 Duel — not in Multiplayer.</div>
+      <div class="opt-grid" id="abilityGrid"></div>
+      <div class="overlay-buttons">
+        <button class="btn btn-secondary" id="abilityCloseBtn">Close</button>
       </div>
     </div>
 
@@ -587,6 +603,13 @@ const celebrationSub = document.getElementById('celebrationSub');
 const celebrationGrid = document.getElementById('celebrationGrid');
 const celebrationCloseBtn = document.getElementById('celebrationCloseBtn');
 const powerBtn = document.getElementById('powerBtn');
+const abilityBtn = document.getElementById('abilityBtn');
+const abilityOverlay = document.getElementById('abilityOverlay');
+const abilityGrid = document.getElementById('abilityGrid');
+const abilityCloseBtn = document.getElementById('abilityCloseBtn');
+const abilityHudBlock = document.getElementById('abilityHudBlock');
+const abilityHudLabel = document.getElementById('abilityHudLabel');
+const abilityFillEl = document.getElementById('abilityFill');
 const powerOverlay = document.getElementById('powerOverlay');
 const powerGrid = document.getElementById('powerGrid');
 const powerCloseBtn = document.getElementById('powerCloseBtn');
@@ -1324,10 +1347,17 @@ function handleMpData(data){
 }
 
 function applyRemoteState(d){
-  state.player.x = d.px; state.player.y = d.py; state.player.facing = d.pf;
-  state.player.tackling = d.pt;
-  state.opponent.x = d.ox; state.opponent.y = d.oy; state.opponent.facing = d.of;
-  state.opponent.tackling = d.ot;
+  // The host's snapshot is written from the host's own point of view (its
+  // "player" is itself, its "opponent" is us). We need the mirror image —
+  // our own character maps to the host's opponent slot, and vice versa.
+  // Getting this backwards is what caused the guest to see their own player
+  // rendered at the host's position (everything looking "offset"), the ball
+  // looking wrong relative to it, and the charge meter drawing around the
+  // wrong character entirely.
+  state.player.x = d.ox; state.player.y = d.oy; state.player.facing = d.of;
+  state.player.tackling = d.ot;
+  state.opponent.x = d.px; state.opponent.y = d.py; state.opponent.facing = d.pf;
+  state.opponent.tackling = d.pt;
   state.ball.x = d.bx; state.ball.y = d.by; state.ball.spin = d.bspin;
   score = d.score; cpuScore = d.cpuScore;
   matchTimeLeft = d.time;
@@ -1626,10 +1656,31 @@ function handleMp2GuestData(data){
 }
 
 function applyRemoteState2v2(d){
-  state.player.x = d.px; state.player.y = d.py; state.player.facing = d.pf; state.player.tackling = d.pt;
-  state.teammate.x = d.tx; state.teammate.y = d.ty; state.teammate.facing = d.tf; state.teammate.tackling = d.tt;
-  state.opponent.x = d.ox; state.opponent.y = d.oy; state.opponent.facing = d.of; state.opponent.tackling = d.ot;
-  state.opponent2.x = d.o2x; state.opponent2.y = d.o2y; state.opponent2.facing = d.o2f; state.opponent2.tackling = d.o2t;
+  // Same principle as the 1v1 fix: the host's snapshot always describes
+  // player/teammate/opponent/opponent2 from the host's own point of view.
+  // Each guest needs to remap that onto "my character / my ally / my two
+  // opponents" based on which slot they were assigned when they connected.
+  let my, ally, e1, e2;
+  if (mp2MySlot === 0) { // teammate slot — same side as the host
+    my = { x: d.tx, y: d.ty, f: d.tf, t: d.tt };
+    ally = { x: d.px, y: d.py, f: d.pf, t: d.pt };
+    e1 = { x: d.ox, y: d.oy, f: d.of, t: d.ot };
+    e2 = { x: d.o2x, y: d.o2y, f: d.o2f, t: d.o2t };
+  } else if (mp2MySlot === 1) { // opponent slot
+    my = { x: d.ox, y: d.oy, f: d.of, t: d.ot };
+    ally = { x: d.o2x, y: d.o2y, f: d.o2f, t: d.o2t };
+    e1 = { x: d.px, y: d.py, f: d.pf, t: d.pt };
+    e2 = { x: d.tx, y: d.ty, f: d.tf, t: d.tt };
+  } else { // opponent2 slot
+    my = { x: d.o2x, y: d.o2y, f: d.o2f, t: d.o2t };
+    ally = { x: d.ox, y: d.oy, f: d.of, t: d.ot };
+    e1 = { x: d.px, y: d.py, f: d.pf, t: d.pt };
+    e2 = { x: d.tx, y: d.ty, f: d.tf, t: d.tt };
+  }
+  state.player.x = my.x; state.player.y = my.y; state.player.facing = my.f; state.player.tackling = my.t;
+  state.teammate.x = ally.x; state.teammate.y = ally.y; state.teammate.facing = ally.f; state.teammate.tackling = ally.t;
+  state.opponent.x = e1.x; state.opponent.y = e1.y; state.opponent.facing = e1.f; state.opponent.tackling = e1.t;
+  state.opponent2.x = e2.x; state.opponent2.y = e2.y; state.opponent2.facing = e2.f; state.opponent2.tackling = e2.t;
   state.ball.x = d.bx; state.ball.y = d.by; state.ball.spin = d.bspin;
   score = d.score; cpuScore = d.cpuScore;
   matchTimeLeft = d.time;
@@ -1690,16 +1741,21 @@ window.addEventListener('keydown', e => {
       ensureAudio();
     }
   }
-  if (e.code === 'KeyE' && screen === 'playing' && !celebrating && matchMode === 'duel') {
-    attemptTackle(state.player, state.opponent);
+  if (e.code === 'KeyE' && screen === 'playing' && !celebrating) {
+    if (matchMode === 'attack' || matchMode === 'practice') {
+      attemptTackle(state.player, null);
+    } else if (matchMode === 'duel') {
+      attemptTackle(state.player, state.opponent);
+    } else if (matchMode === 'multiplayer') {
+      if (isHost) attemptTackle(state.player, state.opponent);
+      else if (conn && mpConnected) conn.send({ type: 'tackle' });
+    } else if (matchMode === 'multiplayer2v2') {
+      if (mp2IsHost) attemptTackle(state.player, null);
+      else if (mp2GuestConn && mp2Connected) mp2GuestConn.send({ type: 'tackle' });
+    }
   }
-  if (e.code === 'KeyE' && screen === 'playing' && !celebrating && matchMode === 'multiplayer') {
-    if (isHost) attemptTackle(state.player, state.opponent);
-    else if (conn && mpConnected) conn.send({ type: 'tackle' });
-  }
-  if (e.code === 'KeyE' && screen === 'playing' && !celebrating && matchMode === 'multiplayer2v2') {
-    if (mp2IsHost) attemptTackle(state.player, null);
-    else if (mp2GuestConn && mp2Connected) mp2GuestConn.send({ type: 'tackle' });
+  if (e.code === 'KeyF' && screen === 'playing' && !celebrating) {
+    activateAbility();
   }
   if (e.code === 'Escape' && matchMode !== 'multiplayer' && !(matchMode === 'multiplayer2v2' && !mp2IsHost)) {
     if (inReplay) skipReplay();
@@ -1776,6 +1832,11 @@ function startMatch(mode){
   replayOverlay.style.display = 'none';
   possessionBiasAgent = null;
   possessionBiasTimer = 0;
+  abilityCooldown = 0;
+  abilityMagnetTimer = 0;
+  abilityOverchargeReady = false;
+  abilityFreezeTimer = 0;
+  updateAbilityCooldownUI();
 
   if (matchMode === 'attack') {
     matchTimeLeft = MATCH_SECONDS;
@@ -1939,8 +2000,16 @@ function kickBall(agent, powerFrac){
 }
 
 function releasePlayerKick(){
-  const power = MIN_KICK_FRAC + (1 - MIN_KICK_FRAC) * chargePower;
+  const overcharged = abilityOverchargeReady && activeAbility === 'overcharge' && abilityAllowed();
+  const power = overcharged ? 1 : MIN_KICK_FRAC + (1 - MIN_KICK_FRAC) * chargePower;
   const kicked = kickBall(state.player, power);
+  if (kicked && overcharged) {
+    state.ball.vx *= 1.35;
+    state.ball.vy *= 1.35;
+    abilityOverchargeReady = false;
+    triggerShake(10 * SCALE);
+    spawnParticles(state.ball.x, state.ball.y, 14, state.player.facing, 1.4);
+  }
   if (kicked && activePower === 'curve' && curveAmount !== 0) {
     state.ball.curve = curveAmount * CURVE_MAX;
   }
@@ -2532,6 +2601,110 @@ powerCloseBtn.addEventListener('click', () => { powerOverlay.style.display = 'no
 updatePowerBtn();
 // ---------- end Powers ----------
 
+// ---------- Abilities ----------
+// A separate, keyed-activation loadout on top of Powers — press F to trigger
+// whichever one is selected. Same scoping rule as Powers: human player only,
+// solo/duel modes only (no network sync, so disabled in multiplayer).
+const ABILITY_LIBRARY = [
+  { id: 'blink', label: 'Blink Dash', emoji: '⚡', desc: 'Instantly burst forward through defenders.', cooldownFrames: 420 },
+  { id: 'magnet', label: 'Magnet Pulse', emoji: '🧲', desc: 'Yanks the ball toward you from anywhere for 1.5s.', cooldownFrames: 600 },
+  { id: 'overcharge', label: 'Overcharge', emoji: '🚀', desc: 'Loads your next kick with bonus power.', cooldownFrames: 480 },
+  { id: 'freeze', label: 'Freeze Foe', emoji: '🧊', desc: 'Slows your opponent for 3s. 1v1 Duel only.', cooldownFrames: 720 }
+];
+
+let activeAbility = 'blink';
+try {
+  const savedAbility = localStorage.getItem('kickabout_ability');
+  if (savedAbility && ABILITY_LIBRARY.some(a => a.id === savedAbility)) activeAbility = savedAbility;
+} catch(e) { /* localStorage unavailable — fall back to default */ }
+
+let abilityCooldown = 0;        // frames remaining until ready
+let abilityMagnetTimer = 0;     // frames remaining of magnet pull
+let abilityOverchargeReady = false; // next kick gets the overcharge bonus
+let abilityFreezeTimer = 0;     // frames remaining CPU is slowed
+
+function selectAbility(id){
+  const opt = ABILITY_LIBRARY.find(a => a.id === id);
+  if (!opt) return;
+  activeAbility = id;
+  try { localStorage.setItem('kickabout_ability', id); } catch(e) {}
+  updateAbilityBtn();
+  renderAbilityGrid();
+}
+
+function updateAbilityBtn(){
+  const opt = ABILITY_LIBRARY.find(a => a.id === activeAbility) || ABILITY_LIBRARY[0];
+  abilityBtn.textContent = `${opt.emoji} Ability: ${opt.label}`;
+}
+
+function renderAbilityGrid(){
+  abilityGrid.innerHTML = '';
+  ABILITY_LIBRARY.forEach(opt => {
+    const card = document.createElement('button');
+    card.className = 'opt-card' + (opt.id === activeAbility ? ' active' : '');
+    card.innerHTML = `<div class="opt-card-emoji">${opt.emoji}</div><div class="opt-card-label">${opt.label}</div><div class="opt-card-unlock">${opt.desc}</div>`;
+    card.addEventListener('click', () => selectAbility(opt.id));
+    abilityGrid.appendChild(card);
+  });
+}
+
+abilityBtn.addEventListener('click', () => {
+  renderAbilityGrid();
+  abilityOverlay.style.display = 'flex';
+});
+abilityCloseBtn.addEventListener('click', () => { abilityOverlay.style.display = 'none'; });
+updateAbilityBtn();
+
+function abilityAllowed(){
+  return matchMode !== 'multiplayer' && matchMode !== 'multiplayer2v2';
+}
+
+function activateAbility(){
+  if (!abilityAllowed() || abilityCooldown > 0 || screen !== 'playing' || celebrating) return;
+  const opt = ABILITY_LIBRARY.find(a => a.id === activeAbility);
+  if (!opt) return;
+  abilityCooldown = opt.cooldownFrames;
+
+  if (activeAbility === 'blink') {
+    const p = state.player;
+    const dist = 130 * SCALE;
+    p.x = clamp(p.x + Math.cos(p.facing) * dist, FIELD_L + PLAYER_R, FIELD_R - PLAYER_R);
+    p.y = clamp(p.y + Math.sin(p.facing) * dist, FIELD_T + PLAYER_R, FIELD_B - PLAYER_R);
+    spawnParticles(p.x, p.y, 22, p.facing + Math.PI, 1.6);
+    triggerShake(6 * SCALE);
+    playWhoosh();
+  } else if (activeAbility === 'magnet') {
+    abilityMagnetTimer = 90;
+    playTone(520, 'sine', audioCtx ? audioCtx.currentTime : 0, 0.3, 0.16);
+    playTone(780, 'sine', audioCtx ? audioCtx.currentTime + 0.08 : 0, 0.25, 0.14);
+  } else if (activeAbility === 'overcharge') {
+    abilityOverchargeReady = true;
+    playTone(300, 'sawtooth', audioCtx ? audioCtx.currentTime : 0, 0.4, 0.18);
+    playTone(600, 'sawtooth', audioCtx ? audioCtx.currentTime + 0.1 : 0, 0.35, 0.15);
+  } else if (activeAbility === 'freeze') {
+    if (matchMode === 'duel') abilityFreezeTimer = 180;
+    playTone(900, 'triangle', audioCtx ? audioCtx.currentTime : 0, 0.5, 0.15);
+    playTone(450, 'triangle', audioCtx ? audioCtx.currentTime + 0.12 : 0, 0.45, 0.13);
+  }
+  updateAbilityCooldownUI();
+}
+
+function updateAbilityCooldownUI(){
+  const opt = ABILITY_LIBRARY.find(a => a.id === activeAbility) || ABILITY_LIBRARY[0];
+  const allowed = abilityAllowed();
+  abilityHudBlock.style.display = allowed ? 'flex' : 'none';
+  if (!allowed) return;
+  if (abilityCooldown > 0) {
+    const pct = clamp(1 - abilityCooldown / opt.cooldownFrames, 0, 1) * 100;
+    abilityFillEl.style.width = pct + '%';
+    abilityHudLabel.textContent = `(${Math.ceil(abilityCooldown / 60)}s)`;
+  } else {
+    abilityFillEl.style.width = '100%';
+    abilityHudLabel.textContent = '(Ready)';
+  }
+}
+// ---------- end Abilities ----------
+
 // ---------- Character color customization ----------
 const PLAYER_COLOR_SWATCHES = [
   { id: 'red', hex: '#ff5a4e', label: 'Red' },
@@ -2754,7 +2927,8 @@ function updateOpponentAI(o, b, p){
     o.vx += dirx * PLAYER_ACCEL * 0.85;
     o.vy += diry * PLAYER_ACCEL * 0.85;
     const sp = Math.hypot(o.vx, o.vy);
-    const maxSp = PLAYER_MAX_SPEED * diff.speedMul;
+    const freezeMul = (abilityFreezeTimer > 0 && activeAbility === 'freeze' && matchMode === 'duel') ? 0.5 : 1;
+    const maxSp = PLAYER_MAX_SPEED * diff.speedMul * freezeMul;
     if (sp > maxSp) { o.vx = o.vx / sp * maxSp; o.vy = o.vy / sp * maxSp; }
     if (sp > 0.2) o.facing = Math.atan2(o.vy, o.vx);
   }
@@ -2947,6 +3121,11 @@ function updateGameplayFrame(){
   maybeSprintDust(p);
   updateStaminaUI();
 
+  if (abilityCooldown > 0) abilityCooldown--;
+  if (abilityMagnetTimer > 0) abilityMagnetTimer--;
+  if (abilityFreezeTimer > 0) abilityFreezeTimer--;
+  updateAbilityCooldownUI();
+
   const is2v2 = matchMode === 'multiplayer2v2';
   const isDuel = matchMode === 'duel' || matchMode === 'multiplayer' || is2v2;
 
@@ -3001,6 +3180,14 @@ function updateGameplayFrame(){
     b.vy += (targetY - b.y) * STEER_STRENGTH * (stickyControl ? 1.8 : 1);
     b.vx += (controller.vx - b.vx) * VELOCITY_BLEND;
     b.vy += (controller.vy - b.vy) * VELOCITY_BLEND;
+  }
+
+  if (abilityMagnetTimer > 0 && activeAbility === 'magnet' && abilityAllowed()) {
+    const mdx = p.x - b.x, mdy = p.y - b.y;
+    const mdist = Math.hypot(mdx, mdy) || 1;
+    const pull = 0.85 * SCALE;
+    b.vx += (mdx / mdist) * pull;
+    b.vy += (mdy / mdist) * pull;
   }
 
   b.x += b.vx;
@@ -3553,8 +3740,7 @@ function render(){
     else renderReplayFrame();
   } else {
     drawLiveScene();
-    const isNetworkGuest = (matchMode === 'multiplayer' && !isHost) || (matchMode === 'multiplayer2v2' && !mp2IsHost);
-    if (!isNetworkGuest) drawChargeMeter();
+    drawChargeMeter();
   }
   ctx.restore();
   drawFlash();
@@ -3580,6 +3766,18 @@ function drawFpsCounter(){
 let fpsLastTime = 0;
 let fpsFrameCount = 0;
 let fpsDisplay = 0;
+
+// Fixed-timestep physics: update() always advances the simulation by the same
+// amount of "game time" regardless of how fast the display/browser is actually
+// rendering. Without this, gameplay speed is tied directly to frame rate — on a
+// laptop that can only sustain, say, 30fps (battery saver, weaker GPU, background
+// tab throttling), everything would visibly move at half speed. Rendering still
+// happens once per animation frame; physics ticks are decoupled via an accumulator.
+const FIXED_DT = 1000 / 60;
+const MAX_CATCHUP_STEPS = 5; // cap catch-up after a stall (e.g. tab was backgrounded)
+let physicsAccumulator = 0;
+let lastFrameTimestamp = 0;
+
 function loop(timestamp){
   if (!fpsLastTime) fpsLastTime = timestamp;
   fpsFrameCount++;
@@ -3588,7 +3786,20 @@ function loop(timestamp){
     fpsFrameCount = 0;
     fpsLastTime = timestamp;
   }
-  update();
+
+  if (!lastFrameTimestamp) lastFrameTimestamp = timestamp;
+  let elapsed = timestamp - lastFrameTimestamp;
+  lastFrameTimestamp = timestamp;
+  if (elapsed > 250) elapsed = 250; // avoid a huge catch-up burst after the tab was backgrounded
+
+  physicsAccumulator += elapsed;
+  let steps = 0;
+  while (physicsAccumulator >= FIXED_DT && steps < MAX_CATCHUP_STEPS) {
+    update();
+    physicsAccumulator -= FIXED_DT;
+    steps++;
+  }
+
   render();
   requestAnimationFrame(loop);
 }
